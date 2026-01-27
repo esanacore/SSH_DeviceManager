@@ -1,4 +1,3 @@
-
 """
 Tkinter + SSH (Paramiko) UI Template
 
@@ -12,10 +11,16 @@ Goals:
 
 Notes:
 - This is a template: swap in your own commands later.
-- For "network devices", you may need to tweak prompt handling, paging, etc.'
+- For "network devices", you may need to tweak prompt handling, paging, etc.
 - Paramiko is a third-party library; install via `pip install paramiko`
 - This code is modular and can be extended with more features as needed.
 - Designed for clarity and ease of modification.
+
+SECURITY NOTES:
+- AutoAddPolicy accepts all host keys without verification. For production,
+  load known_hosts or use WarningPolicy. See SSHManager.connect() comments.
+- Credentials are held in memory. Consider clearing them after disconnect.
+- Default credentials are blank; enter your own values.
 """
 
 import tkinter as tk
@@ -30,6 +35,9 @@ import time
 import paramiko
 # Paramiko allows SSH connections and SFTP file transfers.
 
+
+# Config: command history limit
+COMMAND_HISTORY_LIMIT = 50
 
 
 # -----------------------------
@@ -121,16 +129,28 @@ class SSHManager:
     def __init__(self):
         self.client: Optional[paramiko.SSHClient] = None
         self.sftp: Optional[paramiko.SFTPClient] = None
+        self.host_key: Optional[str] = None
 
     def is_connected(self) -> bool:
         return self.client is not None
 
     def connect(self, host: str, port: int, username: str, password: str, timeout: int = 10):
+        """
+        Connect via SSH.
+
+        SECURITY NOTE:
+        - AutoAddPolicy accepts all host keys without verification.
+        - For production, consider:
+          * WarningPolicy: warns but still connects
+          * Load known_hosts file via load_system_host_keys()
+          * Implement explicit host key verification
+        - This template uses AutoAddPolicy for simplicity.
+        """
         if self.client:
             self.disconnect()
 
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # template behavior
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
             hostname=host,
             port=port,
@@ -141,10 +161,12 @@ class SSHManager:
             look_for_keys=False,
         )
         self.client = ssh
+        self.host_key = host
         # SFTP is optional; only created when needed, but you can also open it here.
         self.sftp = None
 
     def disconnect(self):
+        """Close SSH and SFTP connections, clear sensitive data."""
         try:
             if self.sftp:
                 self.sftp.close()
@@ -159,6 +181,7 @@ class SSHManager:
 
         self.client = None
         self.sftp = None
+        self.host_key = None
 
     def run_command(self, command: str, timeout: int = 30) -> str:
         if not self.client:
@@ -188,7 +211,7 @@ class SSHManager:
 class SSHGuiApp(tk.Tk):
     """
     Tkinter App Template:
-    - Top: connection fields + connect/disconnect
+    - Top: connection fields + connect/disconnect + settings
     - Middle: button sections (with vertical separators)
     - Bottom: terminal output pane
     """
@@ -197,18 +220,22 @@ class SSHGuiApp(tk.Tk):
         super().__init__()
 
         self.title("SSH Command Console (Template)")
-        self.geometry("1100x650")
-        self.minsize(900, 550)
+        self.geometry("1100x700")
+        self.minsize(900, 600)
 
         # Thread-safe queue for log messages (background threads -> UI)
         self.log_queue: "queue.Queue[str]" = queue.Queue()
 
+        # Connection state and history
         self.ssh = SSHManager()
+        self.command_history: List[str] = []
+        self.history_index: int = 0
+        self.is_connecting = False
 
         self._build_ui()
         self._start_log_poller()
 
-        # Define your sections + buttons here (drag/drop later)
+        # Define your sections + buttons here
         self.sections = self._define_sections()
         self._build_button_sections(self.sections)
 
@@ -217,9 +244,9 @@ class SSHGuiApp(tk.Tk):
     # -------------------------
 
     def _build_ui(self):
-        # Main layout: connection frame, command frame, output frame
+        # Main layout: connection frame, settings frame, command frame, output frame
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(2, weight=1)
+        self.rowconfigure(3, weight=1)
 
         self.connection_frame = ttk.LabelFrame(self, text="SSH Connection")
         self.connection_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
@@ -228,14 +255,17 @@ class SSHGuiApp(tk.Tk):
         self.commands_frame = ttk.LabelFrame(self, text="Actions")
         self.commands_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=8)
 
+        self.settings_frame = ttk.LabelFrame(self, text="Settings")
+        self.settings_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 8))
+
         self.output_frame = ttk.LabelFrame(self, text="Terminal Output")
-        self.output_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        self.output_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=(0, 10))
         self.output_frame.rowconfigure(0, weight=1)
         self.output_frame.columnconfigure(0, weight=1)
 
         # ----- Connection inputs -----
         ttk.Label(self.connection_frame, text="Host / IP:").grid(row=0, column=0, padx=6, pady=6, sticky="w")
-        self.host_var = tk.StringVar(value="192.168.1.10")
+        self.host_var = tk.StringVar(value="")
         ttk.Entry(self.connection_frame, textvariable=self.host_var, width=20).grid(row=0, column=1, padx=6, pady=6)
 
         ttk.Label(self.connection_frame, text="Port:").grid(row=0, column=2, padx=6, pady=6, sticky="w")
@@ -243,7 +273,7 @@ class SSHGuiApp(tk.Tk):
         ttk.Entry(self.connection_frame, textvariable=self.port_var, width=6).grid(row=0, column=3, padx=6, pady=6)
 
         ttk.Label(self.connection_frame, text="Username:").grid(row=0, column=4, padx=6, pady=6, sticky="w")
-        self.user_var = tk.StringVar(value="admin")
+        self.user_var = tk.StringVar(value="")
         ttk.Entry(self.connection_frame, textvariable=self.user_var, width=16).grid(row=0, column=5, padx=6, pady=6)
 
         ttk.Label(self.connection_frame, text="Password:").grid(row=0, column=6, padx=6, pady=6, sticky="w")
@@ -259,8 +289,18 @@ class SSHGuiApp(tk.Tk):
         self.status_var = tk.StringVar(value="Disconnected")
         ttk.Label(self.connection_frame, textvariable=self.status_var).grid(row=0, column=10, padx=10, pady=6, sticky="e")
 
+        # ----- Settings -----
+        ttk.Label(self.settings_frame, text="Connection Timeout (s):").grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        self.timeout_var = tk.IntVar(value=10)
+        ttk.Spinbox(self.settings_frame, from_=5, to=60, textvariable=self.timeout_var, width=6).grid(row=0, column=1, padx=6, pady=6, sticky="w")
+
+        self.clear_creds_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(self.settings_frame, text="Clear credentials on disconnect", variable=self.clear_creds_var).grid(row=0, column=2, padx=6, pady=6, sticky="w")
+
+        ttk.Button(self.settings_frame, text="Test Connection", command=self.test_connection).grid(row=0, column=3, padx=6, pady=6, sticky="w")
+
         # ----- Output pane -----
-        self.output_text = tk.Text(self.output_frame, wrap="word", height=12)
+        self.output_text = tk.Text(self.output_frame, wrap="word", height=12, font=("Courier New", 9))
         self.output_text.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=8)
 
         scroll = ttk.Scrollbar(self.output_frame, command=self.output_text.yview)
@@ -277,6 +317,7 @@ class SSHGuiApp(tk.Tk):
 
         ttk.Button(controls, text="Clear Output", command=self.clear_output).grid(row=0, column=0, sticky="w")
         ttk.Button(controls, text="Copy Output", command=self.copy_output).grid(row=0, column=1, sticky="w", padx=(8, 0))
+        ttk.Button(controls, text="Save Output", command=self.save_output).grid(row=0, column=2, sticky="w", padx=(8, 0))
 
     # -------------------------
     # Define Sections / Buttons
@@ -389,22 +430,30 @@ class SSHGuiApp(tk.Tk):
         port = int(self.port_var.get())
         user = self.user_var.get().strip()
         pw = self.pass_var.get()
+        timeout = self.timeout_var.get()
 
         if not host or not user:
             messagebox.showerror("Missing Info", "Please enter Host/IP and Username.")
             return
 
+        if self.is_connecting:
+            messagebox.showwarning("In Progress", "Connection attempt already in progress.")
+            return
+
         self.log(f"Connecting to {host}:{port} as {user}...")
+        self.is_connecting = True
 
         # Run connect in a thread so UI stays responsive
         def worker():
             try:
-                self.ssh.connect(host, port, user, pw)
+                self.ssh.connect(host, port, user, pw, timeout=timeout)
                 self.log("[OK] Connected.")
                 self._set_connected_ui(True)
             except Exception as e:
                 self.log(f"[ERROR] Connection failed: {e}")
                 self._set_connected_ui(False)
+            finally:
+                self.is_connecting = False
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -413,8 +462,40 @@ class SSHGuiApp(tk.Tk):
         try:
             self.ssh.disconnect()
         finally:
+            if self.clear_creds_var.get():
+                self.pass_var.set("")
+                self.log("[INFO] Credentials cleared.")
             self._set_connected_ui(False)
             self.log("[OK] Disconnected.")
+
+    def test_connection(self):
+        """Test SSH connectivity without full interaction."""
+        if self.ssh.is_connected():
+            messagebox.showinfo("Connected", "Already connected to SSH server.")
+            return
+
+        host = self.host_var.get().strip()
+        port = int(self.port_var.get())
+        user = self.user_var.get().strip()
+        pw = self.pass_var.get()
+        timeout = self.timeout_var.get()
+
+        if not host or not user:
+            messagebox.showerror("Missing Info", "Please enter Host/IP and Username.")
+            return
+
+        self.log("Testing connection...")
+
+        def worker():
+            try:
+                temp_ssh = SSHManager()
+                temp_ssh.connect(host, port, user, pw, timeout=timeout)
+                self.log("[OK] Connection test successful.")
+                temp_ssh.disconnect()
+            except Exception as e:
+                self.log(f"[ERROR] Connection test failed: {e}")
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _set_connected_ui(self, connected: bool):
         """
@@ -435,10 +516,18 @@ class SSHGuiApp(tk.Tk):
         """
         Executes a command over SSH and prints output to the terminal pane.
         Uses a background thread so the UI doesn't freeze.
+        Maintains command history for recall.
         """
         if not self.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
             return
+
+        # Add to history
+        if command not in self.command_history or self.command_history[0] != command:
+            self.command_history.insert(0, command)
+            if len(self.command_history) > COMMAND_HISTORY_LIMIT:
+                self.command_history.pop()
+        self.history_index = 0
 
         self.log(f"\n$ {command}")
 
@@ -454,6 +543,7 @@ class SSHGuiApp(tk.Tk):
     def prompt_and_run_custom_command(self):
         """
         Small modal dialog that prompts for a command string, then runs it.
+        Supports history navigation with Up/Down arrow keys.
         """
         if not self.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
@@ -463,12 +553,40 @@ class SSHGuiApp(tk.Tk):
         dialog.title("Run Custom Command")
         dialog.transient(self)
         dialog.grab_set()
+        dialog.geometry("500x100")
 
         ttk.Label(dialog, text="Command:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
         cmd_var = tk.StringVar()
         entry = ttk.Entry(dialog, textvariable=cmd_var, width=60)
         entry.grid(row=0, column=1, padx=10, pady=10)
         entry.focus_set()
+
+        # Local history index for this dialog
+        history_state = {"index": 0}
+
+        def navigate_history(direction: int):
+            """Navigate command history with Up (-1) or Down (+1)."""
+            if not self.command_history:
+                return
+            history_state["index"] = max(0, min(len(self.command_history) - 1,
+                                               history_state["index"] + direction))
+            cmd_var.set(self.command_history[history_state["index"]])
+            entry.icursor("end")
+
+        def on_key(event):
+            if event.keysym == "Up":
+                navigate_history(-1)
+                return "break"
+            elif event.keysym == "Down":
+                navigate_history(1)
+                return "break"
+            elif event.keysym == "Return":
+                run_and_close()
+                return "break"
+
+        entry.bind("<Key-Up>", on_key)
+        entry.bind("<Key-Down>", on_key)
+        entry.bind("<Return>", on_key)
 
         def run_and_close():
             cmd = cmd_var.get().strip()
@@ -546,6 +664,25 @@ class SSHGuiApp(tk.Tk):
         self.clipboard_clear()
         self.clipboard_append(text)
         self.log("[OK] Output copied to clipboard.")
+
+    def save_output(self):
+        """Save terminal output to a text file."""
+        text = self.output_text.get("1.0", "end-1c")
+        if not text.strip():
+            messagebox.showwarning("Empty Output", "Nothing to save.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        if file_path:
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                self.log(f"[OK] Output saved to {file_path}")
+            except Exception as e:
+                self.log(f"[ERROR] Failed to save output: {e}")
 
 
 if __name__ == "__main__":

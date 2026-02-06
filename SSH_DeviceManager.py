@@ -26,7 +26,7 @@ SECURITY NOTES:
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from dataclasses import dataclass
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, Dict
 import threading
 import queue
 import time
@@ -213,12 +213,84 @@ class SSHGuiApp(tk.Tk):
     - Bottom: terminal output pane
     """
 
+    THEMES = {
+        "Default": {
+            "bg": "#f0f0f0",
+            "fg": "black",
+            "text_bg": "white",
+            "text_fg": "black",
+            "entry_bg": "white",
+            "entry_fg": "black",
+            "select_bg": "#0078d7",
+            "select_fg": "white",
+        },
+        "Solarized Dark": {
+            "bg": "#002b36",
+            "fg": "#839496",
+            "text_bg": "#073642",
+            "text_fg": "#93a1a1",
+            "entry_bg": "#073642",
+            "entry_fg": "#93a1a1",
+            "select_bg": "#586e75",
+            "select_fg": "#fdf6e3",
+        },
+        "Solarized Light": {
+            "bg": "#fdf6e3",
+            "fg": "#657b83",
+            "text_bg": "#eee8d5",
+            "text_fg": "#586e75",
+            "entry_bg": "#eee8d5",
+            "entry_fg": "#586e75",
+            "select_bg": "#93a1a1",
+            "select_fg": "#002b36",
+        },
+        "Dark Mode": {
+            "bg": "#1e1e1e",
+            "fg": "#d4d4d4",
+            "text_bg": "#252526",
+            "text_fg": "#d4d4d4",
+            "entry_bg": "#3c3c3c",
+            "entry_fg": "#d4d4d4",
+            "select_bg": "#094771",
+            "select_fg": "white",
+        },
+        "Retro Terminal": {
+            "bg": "#000000",
+            "fg": "#00ff00",
+            "text_bg": "#000000",
+            "text_fg": "#00ff00",
+            "entry_bg": "#000000",
+            "entry_fg": "#00ff00",
+            "select_bg": "#00ff00",
+            "select_fg": "#000000",
+        },
+        "Cyberpunk": {
+            "bg": "#0b0c15",       # Very dark blue/black
+            "fg": "#00f3ff",       # Electric Blue
+            "text_bg": "#120424",  # Deep purple/black
+            "text_fg": "#ff00ff",  # Bright Pink
+            "entry_bg": "#120424",
+            "entry_fg": "#fcee0a", # Bright Yellow
+            "select_bg": "#ff00ff",
+            "select_fg": "#0b0c15",
+        }
+    }
+
     def __init__(self):
         super().__init__()
 
         self.title("SSH Command Console (Template)")
-        self.geometry("1100x700")
-        self.minsize(900, 600)
+        self.geometry("1400x900")
+        self.minsize(1000, 700)
+
+        # Attempt to maximize window
+        try:
+            if self.tk.call("tk", "windowingsystem") == "x11":
+                self.attributes("-zoomed", True)
+            elif self.tk.call("tk", "windowingsystem") == "win32":
+                self.state("zoomed")
+        except (tk.TclError, Exception):
+            pass
 
         # Thread-safe queue for log messages (background threads -> UI)
         self.log_queue: "queue.Queue[str]" = queue.Queue()
@@ -228,7 +300,12 @@ class SSHGuiApp(tk.Tk):
         self.command_history: List[str] = []
         self.history_index: int = 0
         self.is_connecting = False
+        self.host_history: List[str] = []
 
+        # Theme state
+        self.current_theme = tk.StringVar(value="Default")
+
+        self._build_menu()
         self._build_ui()
         self._start_log_poller()
 
@@ -236,9 +313,39 @@ class SSHGuiApp(tk.Tk):
         self.sections = self._define_sections()
         self._build_button_sections(self.sections)
 
+        # Apply default theme
+        self.apply_theme("Default")
+
     # -------------------------
     # UI Construction
     # -------------------------
+
+    def _build_menu(self):
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+
+        # Help Menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About / Usage", command=self.show_help_dialog)
+
+        # Add a visual separator (if supported by OS) or just spacing
+        # Note: Standard menus don't support arbitrary pixel spacing easily.
+        # We can add a dummy disabled menu item to act as a spacer if needed,
+        # but usually OS guidelines dictate menu spacing.
+        # Let's try adding a few spaces to the label of the next item or an empty disabled menu.
+        
+        # Theme Menu (with leading spaces for visual separation)
+        theme_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="     Theme", menu=theme_menu)
+
+        for theme_name in sorted(self.THEMES.keys()):
+            theme_menu.add_radiobutton(
+                label=theme_name,
+                variable=self.current_theme,
+                value=theme_name,
+                command=lambda t=theme_name: self.apply_theme(t)
+            )
 
     def _build_ui(self):
         # Main layout: connection frame, settings frame, command frame, output frame
@@ -263,7 +370,9 @@ class SSHGuiApp(tk.Tk):
         # ----- Connection inputs -----
         ttk.Label(self.connection_frame, text="Host / IP:").grid(row=0, column=0, padx=6, pady=6, sticky="w")
         self.host_var = tk.StringVar(value="")
-        ttk.Entry(self.connection_frame, textvariable=self.host_var, width=20).grid(row=0, column=1, padx=6, pady=6)
+        self.host_combo = ttk.Combobox(self.connection_frame, textvariable=self.host_var, width=20)
+        self.host_combo.grid(row=0, column=1, padx=6, pady=6)
+        self.host_combo.bind("<<ComboboxSelected>>", self.on_host_selected)
 
         ttk.Label(self.connection_frame, text="Port:").grid(row=0, column=2, padx=6, pady=6, sticky="w")
         self.port_var = tk.IntVar(value=22)
@@ -317,6 +426,58 @@ class SSHGuiApp(tk.Tk):
         ttk.Button(controls, text="Save Output", command=self.save_output).grid(row=0, column=2, sticky="w", padx=(8, 0))
 
     # -------------------------
+    # Theme Management
+    # -------------------------
+
+    def apply_theme(self, theme_name: str):
+        theme = self.THEMES.get(theme_name, self.THEMES["Default"])
+        
+        # Configure main window background
+        self.configure(bg=theme["bg"])
+        
+        # Configure styles for ttk widgets
+        style = ttk.Style(self)
+        style.theme_use('clam') # 'clam' allows for easier color customization
+
+        style.configure(".", background=theme["bg"], foreground=theme["fg"], fieldbackground=theme["entry_bg"])
+        style.configure("TLabel", background=theme["bg"], foreground=theme["fg"])
+        style.configure("TButton", background=theme["bg"], foreground=theme["fg"], bordercolor=theme["fg"])
+        style.configure("TEntry", fieldbackground=theme["entry_bg"], foreground=theme["entry_fg"])
+        style.configure("TCombobox", fieldbackground=theme["entry_bg"], foreground=theme["entry_fg"], arrowcolor=theme["fg"])
+        style.configure("TLabelframe", background=theme["bg"], foreground=theme["fg"], bordercolor=theme["fg"])
+        style.configure("TLabelframe.Label", background=theme["bg"], foreground=theme["fg"])
+        style.configure("TCheckbutton", background=theme["bg"], foreground=theme["fg"])
+        style.configure("TSpinbox", fieldbackground=theme["entry_bg"], foreground=theme["entry_fg"], arrowcolor=theme["fg"])
+        
+        # Map dynamic states (e.g. hover, active)
+        style.map("TButton",
+            background=[("active", theme["select_bg"]), ("pressed", theme["select_bg"])],
+            foreground=[("active", theme["select_fg"]), ("pressed", theme["select_fg"])]
+        )
+        style.map("TEntry",
+            fieldbackground=[("readonly", theme["bg"])],
+            foreground=[("readonly", theme["fg"])]
+        )
+        style.map("TCombobox",
+            fieldbackground=[("readonly", theme["bg"])],
+            foreground=[("readonly", theme["fg"])],
+            selectbackground=[("readonly", theme["select_bg"])],
+            selectforeground=[("readonly", theme["select_fg"])]
+        )
+
+        # Configure standard Tk widgets (Text, etc.)
+        self.output_text.configure(
+            bg=theme["text_bg"],
+            fg=theme["text_fg"],
+            insertbackground=theme["fg"], # Cursor color
+            selectbackground=theme["select_bg"],
+            selectforeground=theme["select_fg"]
+        )
+        
+        # Update any existing Toplevels or specific widgets if needed
+        # (For this template, most are covered by ttk styles or rebuilt on demand)
+
+    # -------------------------
     # Define Sections / Buttons
     # -------------------------
 
@@ -358,6 +519,9 @@ class SSHGuiApp(tk.Tk):
                     ActionButton("Upload Config (Template)", enabled=True,
                                  handler=self.upload_config_template,
                                  tooltip="Opens a file picker and uploads to a remote path"),
+                    ActionButton("Send File via SCP", enabled=True,
+                                 handler=self.send_file_scp,
+                                 tooltip="Send a file to the remote server via SCP"),
                     ActionButton("Reboot Device", enabled=False,
                                  handler=lambda: self.run_ssh_command(reboot),
                                  tooltip="Dangerous: enable only when ready"),
@@ -388,10 +552,18 @@ class SSHGuiApp(tk.Tk):
         container = ttk.Frame(self.commands_frame)
         container.pack(fill="x", padx=8, pady=8)
 
+        # Configure grid columns to be equal width
+        total_columns = len(sections) * 2 - 1 # Sections + Separators
+        for i in range(total_columns):
+            if i % 2 == 0: # Section columns
+                container.columnconfigure(i, weight=1, uniform="section")
+            else: # Separator columns
+                container.columnconfigure(i, weight=0)
+
         for i, section in enumerate(sections):
             # Section frame
             sec_frame = ttk.Frame(container, padding=(6, 2))
-            sec_frame.grid(row=0, column=i * 2, sticky="n")
+            sec_frame.grid(row=0, column=i * 2, sticky="nsew")
 
             # Section title
             ttk.Label(sec_frame, text=section.title, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
@@ -422,6 +594,13 @@ class SSHGuiApp(tk.Tk):
     # Connection handlers
     # -------------------------
 
+    def on_host_selected(self, _event):
+        if self.host_var.get() == "<Clear History>":
+            self.host_history.clear()
+            self.host_combo['values'] = []
+            self.host_var.set("")
+            self.log("[INFO] Host history cleared.")
+
     def on_connect(self):
         host = self.host_var.get().strip()
         port = int(self.port_var.get())
@@ -436,6 +615,14 @@ class SSHGuiApp(tk.Tk):
         if self.is_connecting:
             messagebox.showwarning("In Progress", "Connection attempt already in progress.")
             return
+
+        # Update host history
+        if host not in self.host_history:
+            self.host_history.insert(0, host)
+            # Limit history size if desired, e.g., 10 entries
+            if len(self.host_history) > 10:
+                self.host_history.pop()
+            self.host_combo['values'] = self.host_history + ["<Clear History>"]
 
         self.log(f"Connecting to {host}:{port} as {user}...")
         self.is_connecting = True
@@ -622,6 +809,78 @@ class SSHGuiApp(tk.Tk):
                 self.log(f"[ERROR] Upload failed: {e}")
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def send_file_scp(self):
+        """
+        Prompts for a local file and a remote destination path, then uploads via SFTP.
+        """
+        if not self.ssh.is_connected():
+            messagebox.showwarning("Not Connected", "Please connect over SSH first.")
+            return
+
+        local_path = filedialog.askopenfilename(title="Select a file to send")
+        if not local_path:
+            return
+
+        # Ask for remote path
+        dialog = tk.Toplevel(self)
+        dialog.title("Remote Destination")
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.geometry("400x120")
+
+        ttk.Label(dialog, text="Remote Path (including filename):").pack(pady=10)
+        remote_var = tk.StringVar(value=f"/tmp/{local_path.split('/')[-1]}")
+        entry = ttk.Entry(dialog, textvariable=remote_var, width=50)
+        entry.pack(pady=5)
+        entry.focus_set()
+        entry.select_range(0, tk.END)
+
+        def on_confirm():
+            remote_path = remote_var.get().strip()
+            if remote_path:
+                dialog.destroy()
+                self._perform_upload(local_path, remote_path)
+
+        ttk.Button(dialog, text="Upload", command=on_confirm).pack(pady=10)
+
+    def _perform_upload(self, local_path: str, remote_path: str):
+        self.log(f"SCP Upload:\n  local:  {local_path}\n  remote: {remote_path}")
+
+        def worker():
+            try:
+                self.ssh.upload_file(local_path, remote_path)
+                self.log("[OK] SCP Upload complete.")
+            except Exception as e:
+                self.log(f"[ERROR] SCP Upload failed: {e}")
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def show_help_dialog(self):
+        """Displays a help dialog with information about the application."""
+        help_text = """
+SSH Device Manager
+
+Features:
+- Connect to remote hosts via SSH.
+- Execute predefined and custom commands.
+- Upload files via SFTP/SCP.
+- View and save terminal output.
+- Customize appearance with themes.
+
+Usage:
+1. Enter Host/IP, Port, Username, and Password.
+2. Click 'Connect'.
+3. Use the buttons in the 'Actions' panel to interact with the device.
+4. Use 'Run Custom Command...' for specific tasks.
+5. Use 'Send File via SCP' to transfer files.
+
+Tips:
+- The 'Host / IP' field remembers your recent connections.
+- Use the 'Theme' menu to change the application's look.
+- Output can be saved to a text file for later analysis.
+"""
+        messagebox.showinfo("About / Usage", help_text.strip())
 
     # -------------------------
     # Output helpers

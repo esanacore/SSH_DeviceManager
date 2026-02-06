@@ -30,6 +30,7 @@ from typing import Callable, Optional, List
 import threading
 import queue
 import time
+from contextlib import suppress
 
 # Third-party dependency
 import paramiko
@@ -100,9 +101,9 @@ class ToolTip:
         label = tk.Label(
             tw,
             text=self.text,
-            justify=tk.LEFT,
+            justify="left",
             background="#ffffe0",
-            relief=tk.SOLID,
+            relief="solid",
             borderwidth=1,
             font=("Segoe UI", 9),
         )
@@ -167,17 +168,13 @@ class SSHManager:
 
     def disconnect(self):
         """Close SSH and SFTP connections, clear sensitive data."""
-        try:
+        with suppress(OSError, paramiko.SSHException):
             if self.sftp:
                 self.sftp.close()
-        except Exception:
-            pass
 
-        try:
+        with suppress(OSError, paramiko.SSHException):
             if self.client:
                 self.client.close()
-        except Exception:
-            pass
 
         self.client = None
         self.sftp = None
@@ -334,9 +331,9 @@ class SSHGuiApp(tk.Tk):
         """
 
         # Example "command strings" you can replace later:
-        SHOW_VERSION = "show version"
-        SHOW_INTERFACES = "show interfaces"
-        REBOOT = "reload"
+        show_version = "show version"
+        show_interfaces = "show interfaces"
+        reboot = "reload"
 
         return [
             ButtonSection(
@@ -344,10 +341,10 @@ class SSHGuiApp(tk.Tk):
                 max_buttons=6,
                 actions=[
                     ActionButton("Show Version", enabled=True,
-                                 handler=lambda: self.run_ssh_command(SHOW_VERSION),
+                                 handler=lambda: self.run_ssh_command(show_version),
                                  tooltip="Runs: show version"),
                     ActionButton("Show Interfaces", enabled=True,
-                                 handler=lambda: self.run_ssh_command(SHOW_INTERFACES),
+                                 handler=lambda: self.run_ssh_command(show_interfaces),
                                  tooltip="Runs: show interfaces"),
                     ActionButton("Placeholder A", enabled=False,
                                  handler=lambda: self.run_ssh_command("echo Placeholder A"),
@@ -362,7 +359,7 @@ class SSHGuiApp(tk.Tk):
                                  handler=self.upload_config_template,
                                  tooltip="Opens a file picker and uploads to a remote path"),
                     ActionButton("Reboot Device", enabled=False,
-                                 handler=lambda: self.run_ssh_command(REBOOT),
+                                 handler=lambda: self.run_ssh_command(reboot),
                                  tooltip="Dangerous: enable only when ready"),
                 ],
             ),
@@ -506,7 +503,7 @@ class SSHGuiApp(tk.Tk):
             self.status_var.set("Connected" if connected else "Disconnected")
             self.connect_btn.configure(state="disabled" if connected else "normal")
             self.disconnect_btn.configure(state="normal" if connected else "disabled")
-        self.after(0, apply)
+        self.after_idle(apply)
 
     # -------------------------
     # Action helpers (commands / file upload)
@@ -572,6 +569,7 @@ class SSHGuiApp(tk.Tk):
                                                history_state["index"] + direction))
             cmd_var.set(self.command_history[history_state["index"]])
             entry.icursor("end")
+            return
 
         def on_key(event):
             if event.keysym == "Up":
@@ -583,6 +581,7 @@ class SSHGuiApp(tk.Tk):
             elif event.keysym == "Return":
                 run_and_close()
                 return "break"
+            return None
 
         entry.bind("<Key-Up>", on_key)
         entry.bind("<Key-Down>", on_key)
@@ -645,7 +644,7 @@ class SSHGuiApp(tk.Tk):
                     self._append_output(msg)
             except queue.Empty:
                 pass
-            self.after(80, poll)
+            self.after(80, func=poll)
         poll()
 
     def _append_output(self, msg: str):

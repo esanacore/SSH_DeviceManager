@@ -23,6 +23,8 @@ SECURITY NOTES:
 - Default credentials are blank; enter your own values.
 """
 
+import json
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from dataclasses import dataclass
@@ -39,6 +41,7 @@ import paramiko
 
 # Config: command history limit
 COMMAND_HISTORY_LIMIT = 50
+DEFAULT_SECTIONS_FILE = "sections.json"
 
 
 # -----------------------------
@@ -309,9 +312,14 @@ class SSHGuiApp(tk.Tk):
         self._build_ui()
         self._start_log_poller()
 
-        # Define your sections + buttons here
-        self.sections = self._define_sections()
+        # Load sections from JSON (fallback to built-in)
+        self.sections_path = DEFAULT_SECTIONS_FILE
+        self.sections = self.load_sections_from_file(self.sections_path)
         self._build_button_sections(self.sections)
+
+        # Start watcher to auto-reload sections.json on changes
+        self._sections_mtime = self._get_mtime(self.sections_path)
+        self._start_sections_watcher()
 
         # Apply default theme
         self.apply_theme("Default")
@@ -329,16 +337,9 @@ class SSHGuiApp(tk.Tk):
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About / Usage", command=self.show_help_dialog)
 
-        # Add a visual separator (if supported by OS) or just spacing
-        # Note: Standard menus don't support arbitrary pixel spacing easily.
-        # We can add a dummy disabled menu item to act as a spacer if needed,
-        # but usually OS guidelines dictate menu spacing.
-        # Let's try adding a few spaces to the label of the next item or an empty disabled menu.
-        
-        # Theme Menu (with leading spaces for visual separation)
+        # Theme Menu
         theme_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="     Theme", menu=theme_menu)
-
         for theme_name in sorted(self.THEMES.keys()):
             theme_menu.add_radiobutton(
                 label=theme_name,
@@ -346,6 +347,12 @@ class SSHGuiApp(tk.Tk):
                 value=theme_name,
                 command=lambda t=theme_name: self.apply_theme(t)
             )
+
+        # Config Menu: reload sections
+        config_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Config", menu=config_menu)
+        config_menu.add_command(label="Reload Sections", command=lambda: self.reload_sections(DEFAULT_SECTIONS_FILE))
+        config_menu.add_command(label="Open Sections File...", command=lambda: self.open_sections_file(DEFAULT_SECTIONS_FILE))
 
     def _build_ui(self):
         # Main layout: connection frame, settings frame, command frame, output frame
@@ -478,9 +485,119 @@ class SSHGuiApp(tk.Tk):
         # (For this template, most are covered by ttk styles or rebuilt on demand)
 
     # -------------------------
-    # Define Sections / Buttons
+    # Sections loader + integration
     # -------------------------
 
+    def load_sections_from_file(self, path: str) -> List[ButtonSection]:
+        """
+        Loads section/button definitions from a JSON file.
+        Format:
+        {
+          "sections": [
+            {
+              "title": "Status",
+              "max_buttons": 6,
+              "actions": [
+                { "label": "Show Version", "enabled": true, "command": "show version", "tooltip": "..." }
+              ]
+            }
+          ]
+        }
+        Returns built-in definitions on error.
+        """
+        def resolve_handler(cmd: str) -> Callable[[], None]:
+            if not cmd:
+                return lambda: self.log("[WARN] No command assigned to this button.")
+            # special tokens
+            if cmd == "__upload_template__":
+                return self.upload_config_template
+            if cmd == "__send_file__":
+                return self.send_file_scp
+            if cmd == "__custom_command__":
+                return self.prompt_and_run_custom_command
+            # allow "run:actual command" syntax
+            if cmd.startswith("run:"):
+                command_text = cmd.split(":", 1)[1]
+                return lambda c=command_text: self.run_ssh_command(c)
+            # default: treat as SSH command string
+            return lambda c=cmd: self.run_ssh_command(c)
+
+        try:
+            if not os.path.exists(path):
+                self.log(f"[INFO] Sections file '{path}' not found. Using built-in sections.")
+                return self._define_sections()
+
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            sections: List[ButtonSection] = []
+            for s in data.get("sections", []):
+                title = str(s.get("title", "")) or "Untitled"
+                maxb = int(s.get("max_buttons", 6))
+                actions_list = []
+                for a in s.get("actions", []):
+                    label = str(a.get("label", "Button"))
+                    enabled = bool(a.get("enabled", True))
+                    cmd = a.get("command", "") or ""
+                    tooltip = str(a.get("tooltip", ""))
+                    handler = resolve_handler(cmd)
+                    actions_list.append(ActionButton(label=label, enabled=enabled, handler=handler, tooltip=tooltip))
+                sections.append(ButtonSection(title=title, max_buttons=maxb, actions=actions_list))
+            if not sections:
+                self.log("[WARN] Sections file parsed but contained no sections. Using built-in sections.")
+                return self._define_sections()
+            self.log(f"[OK] Loaded sections from '{path}'.")
+            return sections
+        except Exception as e:
+            self.log(f"[ERROR] Failed to load sections from '{path}': {e}")
+            return self._define_sections()
+
+    def reload_sections(self, path: str = DEFAULT_SECTIONS_FILE):
+        # remember which file we're watching
+        self.sections_path = path
+        self.log(f"Reloading sections from '{path}'...")
+        self.sections = self.load_sections_from_file(path)
+        # rebuild UI on main thread
+        self._build_button_sections(self.sections)
+        # update stored mtime after successful reload
+        self._sections_mtime = self._get_mtime(self.sections_path)
+        self.log("[OK] Sections reloaded.")
+
+    def open_sections_file(self, default_path: str = DEFAULT_SECTIONS_FILE):
+        p = filedialog.askopenfilename(initialfile=default_path, filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if p:
+            self.reload_sections(p)
+
+    # -------------------------
+    # Auto-reload watcher
+    # -------------------------
+
+    def _get_mtime(self, path: str):
+        try:
+            return os.path.getmtime(path)
+        except Exception:
+            return None
+
+    def _start_sections_watcher(self, interval_ms: int = 1000):
+        """Periodically checks the mtime of the sections file and reloads on change."""
+        def check():
+            try:
+                current = self._get_mtime(self.sections_path)
+                if current != getattr(self, "_sections_mtime", None):
+                    # Only reload if the file exists or was changed
+                    self.log(f"[INFO] Detected change in sections file '{self.sections_path}', reloading...")
+                    self.reload_sections(self.sections_path)
+                # schedule next check
+            except Exception as e:
+                # don't let watcher crash
+                self.log(f"[WARN] sections watcher error: {e}")
+            finally:
+                self.after(interval_ms, check)
+        # start the periodic check
+        self.after(interval_ms, check)
+
+    # -------------------------
+    # Define Sections / Buttons (fallback)
+    # -------------------------
     def _define_sections(self) -> List[ButtonSection]:
         """
         Define your sections here.
@@ -942,7 +1059,35 @@ Tips:
             except Exception as e:
                 self.log(f"[ERROR] Failed to save output: {e}")
 
+    # -------------------------
+    # File watching / auto-reload
+    # -------------------------
 
-if __name__ == "__main__":
-    app = SSHGuiApp()
-    app.mainloop()
+    def _get_mtime(self, path: str) -> float:
+        """
+        Get the last modified time of a file.
+        Returns 0 for nonexistent files.
+        """
+        try:
+            return os.path.getmtime(path)
+        except Exception:
+            return 0
+
+    def _start_sections_watcher(self):
+        """
+        Start watching the sections file for changes.
+        Polls every second (adjustable).
+        """
+        def poll():
+            if os.path.exists(self.sections_path):
+                mtime = self._get_mtime(self.sections_path)
+                if mtime != self._sections_mtime:
+                    # File has been modified; reload sections
+                    self.log(f"[INFO] Detected changes in '{self.sections_path}'. Reloading sections...")
+                    self.reload_sections(self.sections_path)
+                    self._sections_mtime = mtime
+            # Repeat after 1000ms (1 second)
+            self.after(1000, poll)
+
+        # Start the polling in the background
+        self.after(1000, poll)

@@ -1,0 +1,52 @@
+{
+  "sections": [
+    {
+      "title": "Status",
+      "max_buttons": 6,
+      "actions": [
+        {
+          "label": "Show Version",
+          "enabled": true,
+          "command": "run:show version",
+          "tooltip": "Runs: show version"
+        },
+        {
+          "label": "Show Interfaces",
+          "enabled": true,
+          "command": "run:show interfaces",
+          "tooltip": "Runs: show interfaces"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance",
+      "max_buttons": 6,
+      "actions": [
+        {
+          "label": "Upload Config (Template)",
+          "enabled": true,
+          "command": "__upload_template__",
+          "tooltip": "Open file picker and upload to remote path"
+        },
+        {
+          "label": "Send File via SCP",
+          "enabled": true,
+          "command": "__send_file__",
+          "tooltip": "Send a file to the remote server via SCP"
+        }
+      ]
+    },
+    {
+      "title": "Custom",
+      "max_buttons": 6,
+      "actions": [
+        {
+          "label": "Run Custom Command...",
+          "enabled": true,
+          "command": "__custom_command__",
+          "tooltip": "Prompts you for a command string"
+        }
+      ]
+    }
+  ]
+}

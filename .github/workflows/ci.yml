@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, feat/customizer-autoreload ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Opt into Node.js 24 for JS actions to avoid Node.js 20 deprecation warnings
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+    strategy:
+      matrix:
+        # Include 3.11 and 3.12; keep a narrower set to stabilize while diagnosing
+        python-version: ['3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Show runner info
+      run: |
+        uname -a
+        lsb_release -a || true
+        echo "Python versions available:"
+        pyenv versions || true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Show Python and pip
+      run: |
+        python --version
+        which python || true
+        python -m pip --version
+        python -m pip list
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install paramiko
+
+    - name: Run unit tests (verbose)
+      run: |
+        python -m unittest discover -v || (echo "UNIT TESTS FAILED" && python -m unittest discover -v)
+
+    - name: Collect environment for debugging
+      if: failure()
+      run: |
+        echo "=== ENV ==="
+        env || true
+        echo "=== Python info ==="
+        python --version || true
+        python -m pip --version || true
+        python -m pip list || true
+
+    - name: Run a quick lint (optional)
+      run: |
+        python -m pip install flake8
+        flake8 --max-line-length=120 || true

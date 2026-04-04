@@ -16,8 +16,8 @@ jobs:
 
     strategy:
       matrix:
-        # Narrow to a single known-good Python version to stabilize CI while we diagnose failures
-        python-version: ['3.11']
+        # Include 3.11 and 3.12; keep a narrower set to stabilize while diagnosing
+        python-version: ['3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v4
@@ -49,6 +49,16 @@ jobs:
     - name: Run unit tests (verbose)
       run: |
         python -m unittest discover -v || (echo "UNIT TESTS FAILED" && python -m unittest discover -v)
+
+    - name: Collect environment for debugging
+      if: failure()
+      run: |
+        echo "=== ENV ==="
+        env || true
+        echo "=== Python info ==="
+        python --version || true
+        python -m pip --version || true
+        python -m pip list || true
 
     - name: Run a quick lint (optional)
       run: |

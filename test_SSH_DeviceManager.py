@@ -1,12 +1,153 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
+import types
 
-# Mock tkinter before importing the module to avoid GUI initialization issues
-sys.modules['tkinter'] = MagicMock()
-sys.modules['tkinter.ttk'] = MagicMock()
-sys.modules['tkinter.messagebox'] = MagicMock()
-sys.modules['tkinter.filedialog'] = MagicMock()
+# Create a lightweight tkinter stub module before importing the application
+tk = types.ModuleType('tkinter')
+ttk = types.ModuleType('tkinter.ttk')
+messagebox = types.ModuleType('tkinter.messagebox')
+filedialog = types.ModuleType('tkinter.filedialog')
+
+# Simple dummy widget used for many ttk/tk widgets
+class DummyWidget:
+    def __init__(self, *a, **k):
+        self._items = {}
+    def pack(self, *a, **k):
+        pass
+    def grid(self, *a, **k):
+        pass
+    def configure(self, *a, **k):
+        pass
+    def bind(self, *a, **k):
+        pass
+    def insert(self, *a, **k):
+        pass
+    def delete(self, *a, **k):
+        pass
+    def see(self, *a, **k):
+        pass
+    def columnconfigure(self, *a, **k):
+        pass
+    def rowconfigure(self, *a, **k):
+        pass
+    def pack_forget(self, *a, **k):
+        pass
+    def winfo_children(self, *a, **k):
+        return []
+    def yview(self, *a, **k):
+        pass
+    def get(self, *a, **k):
+        return ""
+    def set(self, *a, **k):
+        pass
+    def grid_rowconfigure(self, *a, **k):
+        pass
+    def __setitem__(self, key, value):
+        self._items[key] = value
+    def __getitem__(self, key):
+        return self._items.get(key)
+
+# Ensure tkinter TclError exists on the stub
+setattr(tk, 'TclError', Exception)
+
+# Update DummyTkBase to have a .tk attribute providing a .call() method used by the app
+class DummyTkBase:
+    def __init__(self, *a, **k):
+        # Provide a minimal 'tk' attribute with a 'call' method used in SSHGuiApp
+        class _TK:
+            @staticmethod
+            def call(*args, **kwargs):
+                # Return a non-'x11' windowing system to avoid X11-specific code path
+                return 'win32'
+        self.tk = _TK()
+        # clipboard methods expected to be MagicMocks in tests
+        self.clipboard_clear = MagicMock()
+        self.clipboard_append = MagicMock()
+    def title(self, *a, **k):
+        pass
+    def geometry(self, *a, **k):
+        pass
+    def minsize(self, *a, **k):
+        pass
+    def config(self, *a, **k):
+        pass
+    def configure(self, *a, **k):
+        return self.config(*a, **k)
+    def columnconfigure(self, *a, **k):
+        pass
+    def rowconfigure(self, *a, **k):
+        pass
+    def after(self, *a, **k):
+        pass
+    def after_idle(self, *a, **k):
+        pass
+    def mainloop(self, *a, **k):
+        pass
+
+# StringVar/IntVar/BooleanVar should be MagicMocks so tests can set .get.return_value
+tk.Tk = DummyTkBase
+tk.Toplevel = DummyWidget
+tk.Label = DummyWidget
+tk.Frame = DummyWidget
+tk.Text = DummyWidget
+tk.StringVar = lambda *a, **k: MagicMock()
+tk.IntVar = lambda *a, **k: MagicMock()
+tk.BooleanVar = lambda *a, **k: MagicMock()
+
+# Minimal ttk
+setattr(ttk, 'Frame', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Button', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Label', lambda *a, **k: DummyWidget())
+setattr(ttk, 'LabelFrame', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Entry', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Scrollbar', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Separator', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Combobox', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Spinbox', lambda *a, **k: DummyWidget())
+setattr(ttk, 'Checkbutton', lambda *a, **k: DummyWidget())
+
+class DummyStyle:
+    def __init__(self, *a, **k):
+        pass
+    def theme_use(self, *a, **k):
+        pass
+    def configure(self, *a, **k):
+        pass
+    def map(self, *a, **k):
+        pass
+
+setattr(ttk, 'Style', lambda *a, **k: DummyStyle())
+
+# messagebox/filedialog functions
+messagebox.showinfo = lambda *a, **k: None
+messagebox.showerror = lambda *a, **k: None
+messagebox.showwarning = lambda *a, **k: None
+
+# Make filedialog functions assignable in tests
+filedialog.askopenfilename = MagicMock(return_value='')
+filedialog.asksaveasfilename = MagicMock(return_value='')
+
+# Minimal Menu stub for menubar operations
+class DummyMenu:
+    def __init__(self, *a, **k):
+        pass
+    def add_cascade(self, *a, **k):
+        pass
+    def add_command(self, *a, **k):
+        pass
+    def add_radiobutton(self, *a, **k):
+        pass
+    def add_separator(self, *a, **k):
+        pass
+
+setattr(tk, 'Menu', lambda *a, **k: DummyMenu())
+
+# Re-insert modules in sys.modules
+sys.modules['tkinter'] = tk
+sys.modules['tkinter.ttk'] = ttk
+sys.modules['tkinter.messagebox'] = messagebox
+sys.modules['tkinter.filedialog'] = filedialog
 
 import SSH_DeviceManager
 
@@ -133,7 +274,7 @@ class TestSSHGuiApp(unittest.TestCase):
     @patch('SSH_DeviceManager.SSHManager')
     def test_app_initialization(self, mock_ssh_manager):
         # Since we mocked tkinter, we can instantiate the app
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         self.assertIsNotNone(app.ssh)
         self.assertIsInstance(app.sections, list)
         self.assertTrue(len(app.sections) > 0)
@@ -145,7 +286,7 @@ class TestSSHGuiApp(unittest.TestCase):
 
     @patch('SSH_DeviceManager.threading.Thread')
     def test_on_connect(self, mock_thread):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         
         # Configure mocks for UI variables
         app.host_var.get.return_value = "192.168.1.1"
@@ -153,24 +294,24 @@ class TestSSHGuiApp(unittest.TestCase):
         app.port_var.get.return_value = 22
         app.pass_var.get.return_value = "password"
         app.timeout_var.get.return_value = 10
-        
+
         app.ssh = MagicMock()
         app.log = MagicMock()
-        
+
         app.on_connect()
-        
+
         # Verify thread started
         mock_thread.assert_called()
         args, kwargs = mock_thread.call_args
         target = kwargs.get('target')
-        
+
         # Execute the worker function
         target()
-        
+
         app.ssh.connect.assert_called_with("192.168.1.1", 22, "admin", "password", timeout=10)
 
     def test_on_disconnect(self):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.ssh = MagicMock()
         app.log = MagicMock()
         app.clear_creds_var.get.return_value = True
@@ -185,7 +326,7 @@ class TestSSHGuiApp(unittest.TestCase):
 
     @patch('SSH_DeviceManager.threading.Thread')
     def test_test_connection(self, mock_thread):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.ssh = MagicMock()
         app.ssh.is_connected.return_value = False # Not connected
         app.log = MagicMock()
@@ -195,13 +336,13 @@ class TestSSHGuiApp(unittest.TestCase):
         app.port_var.get.return_value = 22
         app.pass_var.get.return_value = "password"
         app.timeout_var.get.return_value = 10
-        
+
         app.test_connection()
-        
+
         mock_thread.assert_called()
         args, kwargs = mock_thread.call_args
         target = kwargs.get('target')
-        
+
         # We need to mock SSHManager inside the worker
         with patch('SSH_DeviceManager.SSHManager') as MockSSHManager:
             mock_temp_ssh = MockSSHManager.return_value
@@ -211,7 +352,7 @@ class TestSSHGuiApp(unittest.TestCase):
 
     @patch('SSH_DeviceManager.threading.Thread')
     def test_run_ssh_command(self, mock_thread):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.ssh = MagicMock()
         app.ssh.is_connected.return_value = True
         app.log = MagicMock()
@@ -234,7 +375,7 @@ class TestSSHGuiApp(unittest.TestCase):
 
     @patch('SSH_DeviceManager.threading.Thread')
     def test_upload_config_template(self, mock_thread):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.ssh = MagicMock()
         app.ssh.is_connected.return_value = True
         app.log = MagicMock()
@@ -254,7 +395,7 @@ class TestSSHGuiApp(unittest.TestCase):
         app.ssh.upload_file.assert_called_with("/path/to/file", "/tmp/uploaded_config.txt")
 
     def test_copy_output(self):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.output_text = MagicMock()
         app.output_text.get.return_value = "some output"
         app.log = MagicMock()
@@ -265,7 +406,12 @@ class TestSSHGuiApp(unittest.TestCase):
         app.clipboard_append.assert_called_with("some output")
 
     def test_log(self):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        
+        # Drain the log_queue if needed (not relevant to the test itself)
+        while not app.log_queue.empty():
+            app.log_queue.get()
+        
         app.log("test message")
         
         # Check if message was put in queue
@@ -274,7 +420,7 @@ class TestSSHGuiApp(unittest.TestCase):
         self.assertIn("test message", msg)
 
     def test_save_output(self):
-        app = SSH_DeviceManager.SSHGuiApp()
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.output_text = MagicMock()
         app.output_text.get.return_value = "some output"
         app.log = MagicMock()

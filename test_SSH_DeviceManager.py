@@ -308,7 +308,14 @@ class TestSSHGuiApp(unittest.TestCase):
         # Execute the worker function
         target()
 
-        app.ssh.connect.assert_called_with("192.168.1.1", 22, "admin", "password", timeout=10)
+        app.ssh.connect.assert_called_with(
+            "192.168.1.1",
+            22,
+            "admin",
+            "password",
+            timeout=10,
+            host_key_mode="warning",
+        )
 
     def test_on_disconnect(self):
         app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
@@ -347,7 +354,14 @@ class TestSSHGuiApp(unittest.TestCase):
         with patch('SSH_DeviceManager.SSHManager') as MockSSHManager:
             mock_temp_ssh = MockSSHManager.return_value
             target()
-            mock_temp_ssh.connect.assert_called_with("192.168.1.1", 22, "admin", "password", timeout=10)
+            mock_temp_ssh.connect.assert_called_with(
+                "192.168.1.1",
+                22,
+                "admin",
+                "password",
+                timeout=10,
+                host_key_mode="warning",
+            )
             mock_temp_ssh.disconnect.assert_called()
 
     @patch('SSH_DeviceManager.threading.Thread')

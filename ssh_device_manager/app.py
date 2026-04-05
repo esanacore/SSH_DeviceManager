@@ -21,7 +21,6 @@ from .themes import THEMES
 from . import config as app_config_mod
 from . import sections_loader
 from .validation import parse_int_input, get_connection_inputs, get_host_key_mode
-from .output import OutputManager
 
 COMMAND_HISTORY_LIMIT = 500
 APP_CONFIG_FILE = "ssh_device_manager_config.json"
@@ -123,9 +122,7 @@ class SSHGuiApp(tk.Tk):
         self._build_menu()
         self._build_ui()
 
-        self._output_mgr = OutputManager(self.output_text)
-        self._output_mgr.start_poller(self)
-
+        self._start_log_poller()
         self._start_connection_monitor()
 
         self.sections_path = DEFAULT_SECTIONS_FILE

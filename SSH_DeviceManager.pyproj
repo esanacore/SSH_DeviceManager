@@ -4,7 +4,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>280160f3-55bd-4dba-b159-9dc23ce331dc</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>SSH_DeviceManager.py</StartupFile>
+    <StartupFile>
+    </StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,6 +24,15 @@
   <ItemGroup>
     <Compile Include="customizer.py" />
     <Compile Include="SSH_DeviceManager.py" />
+    <Compile Include="ssh_device_manager\app.py" />
+    <Compile Include="ssh_device_manager\config.py" />
+    <Compile Include="ssh_device_manager\models.py" />
+    <Compile Include="ssh_device_manager\output.py" />
+    <Compile Include="ssh_device_manager\sections_loader.py" />
+    <Compile Include="ssh_device_manager\ssh_manager.py" />
+    <Compile Include="ssh_device_manager\themes.py" />
+    <Compile Include="ssh_device_manager\validation.py" />
+    <Compile Include="ssh_device_manager\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="docs\READING_GUIDE.md" />
@@ -32,6 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="docs\" />
+    <Folder Include="ssh_device_manager\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

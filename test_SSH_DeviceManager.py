@@ -297,7 +297,7 @@ class TestSSHManager(unittest.TestCase):
         mock_sftp.put.assert_called_with("local", "remote")
 
 class TestSSHGuiApp(unittest.TestCase):
-    @patch('SSH_DeviceManager.SSHManager')
+    @patch('ssh_device_manager.app.SSHManager')
     def test_app_initialization(self, mock_ssh_manager):
         # Since we mocked tkinter, we can instantiate the app
         app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
@@ -377,7 +377,7 @@ class TestSSHGuiApp(unittest.TestCase):
         target = kwargs.get('target')
 
         # We need to mock SSHManager inside the worker
-        with patch('SSH_DeviceManager.SSHManager') as MockSSHManager:
+        with patch('ssh_device_manager.app.SSHManager') as MockSSHManager:
             mock_temp_ssh = MockSSHManager.return_value
             target()
             mock_temp_ssh.connect.assert_called_with(
@@ -636,7 +636,7 @@ class TestTestConnectionErrors(unittest.TestCase):
         app._set_connected_ui = MagicMock()
         return app
 
-    @patch('SSH_DeviceManager.SSHManager')
+    @patch('ssh_device_manager.app.SSHManager')
     @patch('SSH_DeviceManager.threading.Thread')
     def test_test_connection_auth_error(self, mock_thread, MockSSHManager):
         app = self._make_app()
@@ -650,7 +650,7 @@ class TestTestConnectionErrors(unittest.TestCase):
         auth_msg = [m for m in logged if "authentication rejected" in m]
         self.assertTrue(len(auth_msg) > 0)
 
-    @patch('SSH_DeviceManager.SSHManager')
+    @patch('ssh_device_manager.app.SSHManager')
     @patch('SSH_DeviceManager.threading.Thread')
     def test_test_connection_os_error(self, mock_thread, MockSSHManager):
         app = self._make_app()

@@ -298,6 +298,62 @@ class SSHGuiApp(tk.Tk):
 
         self.output_text.configure(bg=theme["text_bg"], fg=theme["text_fg"], insertbackground=theme["fg"], selectbackground=theme["select_bg"], selectforeground=theme["select_fg"])
 
+        # Apply colors to raw Tk widgets (Label, Button, Entry, etc.)
+        self._apply_theme_to_children(self, theme, btn_bg, border, label_fg)
+
+    def _apply_theme_to_children(self, parent, theme, btn_bg, border, label_fg):
+        """Recursively configure raw Tk widgets that ttk styles don't reach."""
+        for child in parent.winfo_children():
+            cls_name = child.winfo_class()
+            try:
+                if cls_name == "Label":
+                    child.configure(bg=theme["bg"], fg=label_fg)
+                elif cls_name == "Button":
+                    child.configure(
+                        bg=btn_bg, fg=theme["fg"],
+                        activebackground=theme["select_bg"],
+                        activeforeground=theme["select_fg"],
+                        highlightbackground=border,
+                    )
+                elif cls_name == "Entry":
+                    child.configure(
+                        bg=theme["entry_bg"], fg=theme["entry_fg"],
+                        insertbackground=theme["entry_fg"],
+                        highlightbackground=border,
+                        selectbackground=theme["select_bg"],
+                        selectforeground=theme["select_fg"],
+                    )
+                elif cls_name == "Labelframe":
+                    child.configure(bg=theme["bg"], fg=label_fg)
+                elif cls_name == "Checkbutton":
+                    child.configure(
+                        bg=theme["bg"], fg=theme["fg"],
+                        activebackground=theme["bg"],
+                        activeforeground=theme["fg"],
+                        selectcolor=theme["entry_bg"],
+                        highlightbackground=border,
+                    )
+                elif cls_name == "Spinbox":
+                    child.configure(
+                        bg=theme["entry_bg"], fg=theme["entry_fg"],
+                        buttonbackground=btn_bg,
+                        insertbackground=theme["entry_fg"],
+                        highlightbackground=border,
+                        selectbackground=theme["select_bg"],
+                        selectforeground=theme["select_fg"],
+                    )
+                elif cls_name == "Menu":
+                    child.configure(
+                        bg=theme["bg"], fg=theme["fg"],
+                        activebackground=theme["select_bg"],
+                        activeforeground=theme["select_fg"],
+                    )
+                elif cls_name == "Frame":
+                    child.configure(bg=theme["bg"])
+            except tk.TclError:
+                pass
+            self._apply_theme_to_children(child, theme, btn_bg, border, label_fg)
+
     # -------------------------
     # Sections loader + integration
     # -------------------------

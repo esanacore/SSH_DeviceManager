@@ -30,6 +30,8 @@ from typing import Callable, Optional, List
 import threading
 import queue
 import time
+import json
+import os
 
 # Third-party dependency
 import paramiko
@@ -38,6 +40,7 @@ import paramiko
 
 # Config: command history limit
 COMMAND_HISTORY_LIMIT = 50
+CONFIG_FILE = "ssh_device_manager_config.json"
 
 
 # -----------------------------
@@ -132,25 +135,46 @@ class SSHManager:
         self.host_key: Optional[str] = None
 
     def is_connected(self) -> bool:
-        return self.client is not None
+        if not self.client:
+            return False
 
-    def connect(self, host: str, port: int, username: str, password: str, timeout: int = 10):
+        transport = self.client.get_transport()
+        is_active = bool(transport and transport.is_active())
+        if not is_active:
+            self.disconnect()
+        return is_active
+
+    def connect(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        timeout: int = 10,
+        host_key_mode: str = "warning",
+    ):
         """
         Connect via SSH.
 
         SECURITY NOTE:
-        - AutoAddPolicy accepts all host keys without verification.
-        - For production, consider:
-          * WarningPolicy: warns but still connects
-          * Load known_hosts file via load_system_host_keys()
-          * Implement explicit host key verification
-        - This template uses AutoAddPolicy for simplicity.
+        - RejectPolicy requires the host key to already exist in known_hosts.
+        - WarningPolicy warns and then trusts the presented host key.
+        - AutoAddPolicy trusts all host keys silently.
+        - This template defaults to WarningPolicy so first-use trust is visible.
         """
         if self.client:
             self.disconnect()
 
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.load_system_host_keys()
+
+        policies = {
+            "strict": paramiko.RejectPolicy,
+            "warning": paramiko.WarningPolicy,
+            "auto": paramiko.AutoAddPolicy,
+        }
+        policy_cls = policies.get(host_key_mode, paramiko.WarningPolicy)
+        ssh.set_missing_host_key_policy(policy_cls())
         ssh.connect(
             hostname=host,
             port=port,
@@ -222,6 +246,8 @@ class SSHGuiApp(tk.Tk):
         self.title("SSH Command Console (Template)")
         self.geometry("1100x700")
         self.minsize(900, 600)
+        self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_FILE)
+        self.config_data = self._load_app_config()
 
         # Thread-safe queue for log messages (background threads -> UI)
         self.log_queue: "queue.Queue[str]" = queue.Queue()
@@ -234,10 +260,12 @@ class SSHGuiApp(tk.Tk):
 
         self._build_ui()
         self._start_log_poller()
+        self._start_connection_monitor()
 
         # Define your sections + buttons here
         self.sections = self._define_sections()
         self._build_button_sections(self.sections)
+        self._refresh_profile_list()
 
     # -------------------------
     # UI Construction
@@ -289,15 +317,45 @@ class SSHGuiApp(tk.Tk):
         self.status_var = tk.StringVar(value="Disconnected")
         ttk.Label(self.connection_frame, textvariable=self.status_var).grid(row=0, column=10, padx=10, pady=6, sticky="e")
 
+        ttk.Label(self.connection_frame, text="Profile Name:").grid(row=1, column=0, padx=6, pady=6, sticky="w")
+        self.profile_name_var = tk.StringVar()
+        ttk.Entry(self.connection_frame, textvariable=self.profile_name_var, width=20).grid(row=1, column=1, padx=6, pady=6)
+
+        ttk.Label(self.connection_frame, text="Saved Profiles:").grid(row=1, column=2, padx=6, pady=6, sticky="w")
+        self.profile_select_var = tk.StringVar()
+        self.profile_combo = ttk.Combobox(
+            self.connection_frame,
+            textvariable=self.profile_select_var,
+            state="readonly",
+            width=18,
+        )
+        self.profile_combo.grid(row=1, column=3, padx=6, pady=6, sticky="w")
+        self.profile_combo.bind("<<ComboboxSelected>>", lambda _event: self.load_selected_profile())
+
+        ttk.Button(self.connection_frame, text="Save Profile", command=self.save_profile).grid(row=1, column=4, padx=6, pady=6)
+        ttk.Button(self.connection_frame, text="Load Profile", command=self.load_selected_profile).grid(row=1, column=5, padx=6, pady=6)
+        ttk.Button(self.connection_frame, text="Delete Profile", command=self.delete_selected_profile).grid(row=1, column=6, padx=6, pady=6)
+
         # ----- Settings -----
         ttk.Label(self.settings_frame, text="Connection Timeout (s):").grid(row=0, column=0, padx=6, pady=6, sticky="w")
         self.timeout_var = tk.IntVar(value=10)
         ttk.Spinbox(self.settings_frame, from_=5, to=60, textvariable=self.timeout_var, width=6).grid(row=0, column=1, padx=6, pady=6, sticky="w")
 
-        self.clear_creds_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(self.settings_frame, text="Clear credentials on disconnect", variable=self.clear_creds_var).grid(row=0, column=2, padx=6, pady=6, sticky="w")
+        ttk.Label(self.settings_frame, text="Host Key Policy:").grid(row=0, column=2, padx=6, pady=6, sticky="w")
+        self.host_key_mode_var = tk.StringVar(value="warning")
+        self.host_key_mode_combo = ttk.Combobox(
+            self.settings_frame,
+            textvariable=self.host_key_mode_var,
+            state="readonly",
+            width=18,
+            values=("strict", "warning", "auto"),
+        )
+        self.host_key_mode_combo.grid(row=0, column=3, padx=6, pady=6, sticky="w")
 
-        ttk.Button(self.settings_frame, text="Test Connection", command=self.test_connection).grid(row=0, column=3, padx=6, pady=6, sticky="w")
+        self.clear_creds_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(self.settings_frame, text="Clear credentials on disconnect", variable=self.clear_creds_var).grid(row=0, column=4, padx=6, pady=6, sticky="w")
+
+        ttk.Button(self.settings_frame, text="Test Connection", command=self.test_connection).grid(row=0, column=5, padx=6, pady=6, sticky="w")
 
         # ----- Output pane -----
         self.output_text = tk.Text(self.output_frame, wrap="word", height=12, font=("Courier New", 9))
@@ -323,6 +381,114 @@ class SSHGuiApp(tk.Tk):
     # Define Sections / Buttons
     # -------------------------
 
+    def _default_action_config(self) -> list[dict]:
+        return [
+            {
+                "title": "Status",
+                "max_buttons": 6,
+                "actions": [
+                    {
+                        "label": "Show Version",
+                        "enabled": True,
+                        "type": "command",
+                        "value": "show version",
+                        "tooltip": "Runs: show version",
+                    },
+                    {
+                        "label": "Show Interfaces",
+                        "enabled": True,
+                        "type": "command",
+                        "value": "show interfaces",
+                        "tooltip": "Runs: show interfaces",
+                    },
+                    {
+                        "label": "Placeholder A",
+                        "enabled": False,
+                        "type": "command",
+                        "value": "echo Placeholder A",
+                        "tooltip": "Disabled until you set enabled=True",
+                    },
+                ],
+            },
+            {
+                "title": "Maintenance",
+                "max_buttons": 6,
+                "actions": [
+                    {
+                        "label": "Upload Config (Template)",
+                        "enabled": True,
+                        "type": "upload",
+                        "value": "/tmp/uploaded_config.txt",
+                        "tooltip": "Opens a file picker and uploads to a remote path",
+                    },
+                    {
+                        "label": "Reboot Device",
+                        "enabled": False,
+                        "type": "command",
+                        "value": "reload",
+                        "tooltip": "Dangerous: enable only when ready",
+                    },
+                ],
+            },
+            {
+                "title": "Custom",
+                "max_buttons": 6,
+                "actions": [
+                    {
+                        "label": "Run Custom Command...",
+                        "enabled": True,
+                        "type": "custom_command",
+                        "tooltip": "Prompts you for a command string",
+                    },
+                ],
+            },
+        ]
+
+    def _default_config_data(self) -> dict:
+        return {
+            "profiles": {},
+            "actions": self._default_action_config(),
+        }
+
+    def _load_app_config(self) -> dict:
+        if not os.path.exists(self.config_path):
+            config = self._default_config_data()
+            self.config_data = config
+            self._save_app_config()
+            return config
+
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as handle:
+                loaded = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            config = self._default_config_data()
+            self.config_data = config
+            self._save_app_config()
+            return config
+
+        config = self._default_config_data()
+        if isinstance(loaded, dict):
+            profiles = loaded.get("profiles")
+            actions = loaded.get("actions")
+            if isinstance(profiles, dict):
+                config["profiles"] = profiles
+            if isinstance(actions, list) and actions:
+                config["actions"] = actions
+        return config
+
+    def _save_app_config(self):
+        with open(self.config_path, "w", encoding="utf-8") as handle:
+            json.dump(self.config_data, handle, indent=2)
+
+    def _make_action_handler(self, action_type: str, value: str) -> Callable[[], None]:
+        if action_type == "command":
+            return lambda command=value: self.run_ssh_command(command)
+        if action_type == "upload":
+            return lambda remote_path=value: self.upload_config_template(remote_path)
+        if action_type == "custom_command":
+            return self.prompt_and_run_custom_command
+        return lambda: self.log(f"[WARN] Unsupported action type: {action_type}")
+
     def _define_sections(self) -> List[ButtonSection]:
         """
         Define your sections here.
@@ -333,48 +499,48 @@ class SSHGuiApp(tk.Tk):
         - handler points to a function that executes a command or upload.
         """
 
-        # Example "command strings" you can replace later:
-        SHOW_VERSION = "show version"
-        SHOW_INTERFACES = "show interfaces"
-        REBOOT = "reload"
+        sections: List[ButtonSection] = []
 
-        return [
-            ButtonSection(
-                title="Status",
-                max_buttons=6,
-                actions=[
-                    ActionButton("Show Version", enabled=True,
-                                 handler=lambda: self.run_ssh_command(SHOW_VERSION),
-                                 tooltip="Runs: show version"),
-                    ActionButton("Show Interfaces", enabled=True,
-                                 handler=lambda: self.run_ssh_command(SHOW_INTERFACES),
-                                 tooltip="Runs: show interfaces"),
-                    ActionButton("Placeholder A", enabled=False,
-                                 handler=lambda: self.run_ssh_command("echo Placeholder A"),
-                                 tooltip="Disabled until you set enabled=True"),
-                ],
-            ),
-            ButtonSection(
-                title="Maintenance",
-                max_buttons=6,
-                actions=[
-                    ActionButton("Upload Config (Template)", enabled=True,
-                                 handler=self.upload_config_template,
-                                 tooltip="Opens a file picker and uploads to a remote path"),
-                    ActionButton("Reboot Device", enabled=False,
-                                 handler=lambda: self.run_ssh_command(REBOOT),
-                                 tooltip="Dangerous: enable only when ready"),
-                ],
-            ),
-            ButtonSection(
-                title="Custom",
-                max_buttons=6,
-                actions=[
-                    ActionButton("Run Custom Command...", enabled=True,
-                                 handler=self.prompt_and_run_custom_command,
-                                 tooltip="Prompts you for a command string"),
-                ],
-            ),
+        for raw_section in self.config_data.get("actions", []):
+            title = str(raw_section.get("title", "Untitled"))
+            max_buttons = raw_section.get("max_buttons", 6)
+            if not isinstance(max_buttons, int) or max_buttons < 1:
+                max_buttons = 6
+
+            actions: List[ActionButton] = []
+            for raw_action in raw_section.get("actions", []):
+                label = str(raw_action.get("label", "Unnamed Action"))
+                enabled = bool(raw_action.get("enabled", True))
+                action_type = str(raw_action.get("type", "command"))
+                value = str(raw_action.get("value", ""))
+                tooltip = str(raw_action.get("tooltip", ""))
+                handler = self._make_action_handler(action_type, value)
+                actions.append(
+                    ActionButton(
+                        label=label,
+                        enabled=enabled,
+                        handler=handler,
+                        tooltip=tooltip,
+                    )
+                )
+
+            sections.append(
+                ButtonSection(
+                    title=title,
+                    max_buttons=max_buttons,
+                    actions=actions,
+                )
+            )
+
+        return sections or [
+            ButtonSection(title="Custom", max_buttons=6, actions=[
+                ActionButton(
+                    "Run Custom Command...",
+                    enabled=True,
+                    handler=self.prompt_and_run_custom_command,
+                    tooltip="Prompts you for a command string",
+                )
+            ])
         ]
 
     def _build_button_sections(self, sections: List[ButtonSection]):
@@ -425,29 +591,164 @@ class SSHGuiApp(tk.Tk):
     # Connection handlers
     # -------------------------
 
-    def on_connect(self):
+    def _refresh_profile_list(self):
+        profile_names = sorted(self.config_data.get("profiles", {}).keys())
+        self.profile_combo["values"] = profile_names
+
+        current = self.profile_select_var.get().strip()
+        if current in profile_names:
+            return
+        if profile_names:
+            self.profile_select_var.set(profile_names[0])
+        else:
+            self.profile_select_var.set("")
+
+    def save_profile(self):
+        profile_name = self.profile_name_var.get().strip() or self.profile_select_var.get().strip()
+        if not profile_name:
+            messagebox.showwarning("Missing Profile Name", "Enter a profile name before saving.")
+            return
+
+        inputs = self._get_connection_inputs()
+        if inputs is None:
+            return
+        host, port, user, _pw, timeout = inputs
+
+        self.config_data.setdefault("profiles", {})[profile_name] = {
+            "host": host,
+            "port": port,
+            "username": user,
+            "timeout": timeout,
+            "host_key_mode": self._get_host_key_mode(),
+        }
+        self._save_app_config()
+        self._refresh_profile_list()
+        self.profile_select_var.set(profile_name)
+        self.profile_name_var.set(profile_name)
+        self.log(f"[OK] Saved profile '{profile_name}'.")
+
+    def load_selected_profile(self):
+        profile_name = self.profile_select_var.get().strip()
+        if not profile_name:
+            messagebox.showwarning("No Profile Selected", "Choose a saved profile to load.")
+            return
+
+        profile = self.config_data.get("profiles", {}).get(profile_name)
+        if not isinstance(profile, dict):
+            messagebox.showerror("Missing Profile", f"Profile '{profile_name}' was not found.")
+            self._refresh_profile_list()
+            return
+
+        self.profile_name_var.set(profile_name)
+        self.host_var.set(str(profile.get("host", "")))
+        self.port_var.set(int(profile.get("port", 22)))
+        self.user_var.set(str(profile.get("username", "")))
+        self.timeout_var.set(int(profile.get("timeout", 10)))
+        self.host_key_mode_var.set(str(profile.get("host_key_mode", "warning")))
+        self.log(f"[OK] Loaded profile '{profile_name}'.")
+
+    def delete_selected_profile(self):
+        profile_name = self.profile_select_var.get().strip()
+        if not profile_name:
+            messagebox.showwarning("No Profile Selected", "Choose a saved profile to delete.")
+            return
+
+        confirmed = messagebox.askyesno("Delete Profile", f"Delete profile '{profile_name}'?")
+        if not confirmed:
+            return
+
+        profiles = self.config_data.get("profiles", {})
+        if profile_name in profiles:
+            del profiles[profile_name]
+            self._save_app_config()
+            self._refresh_profile_list()
+            if self.profile_name_var.get().strip() == profile_name:
+                self.profile_name_var.set("")
+            self.log(f"[OK] Deleted profile '{profile_name}'.")
+
+    def _parse_int_input(self, value: str, label: str, minimum: int = 1, maximum: Optional[int] = None) -> Optional[int]:
+        """Parse and validate integer form input, showing a user-facing error on failure."""
+        text = value.strip()
+        try:
+            parsed = int(text)
+        except (TypeError, ValueError):
+            messagebox.showerror("Invalid Input", f"{label} must be a whole number.")
+            return None
+
+        if parsed < minimum or (maximum is not None and parsed > maximum):
+            if maximum is None:
+                range_text = f"{minimum}+"
+            else:
+                range_text = f"{minimum}-{maximum}"
+            messagebox.showerror("Invalid Input", f"{label} must be in the range {range_text}.")
+            return None
+
+        return parsed
+
+    def _get_connection_inputs(self) -> Optional[tuple[str, int, str, str, int]]:
+        """Validate the current connection form and return normalized values."""
         host = self.host_var.get().strip()
-        port = int(self.port_var.get())
         user = self.user_var.get().strip()
         pw = self.pass_var.get()
-        timeout = self.timeout_var.get()
 
         if not host or not user:
             messagebox.showerror("Missing Info", "Please enter Host/IP and Username.")
+            return None
+
+        port = self._parse_int_input(str(self.port_var.get()), "Port", minimum=1, maximum=65535)
+        if port is None:
+            return None
+
+        timeout = self._parse_int_input(str(self.timeout_var.get()), "Connection Timeout", minimum=1, maximum=300)
+        if timeout is None:
+            return None
+
+        return host, port, user, pw, timeout
+
+    def _get_host_key_mode(self) -> str:
+        mode = self.host_key_mode_var.get().strip().lower()
+        if mode not in {"strict", "warning", "auto"}:
+            return "warning"
+        return mode
+
+    def _refresh_connection_state(self, *, notify_on_drop: bool = False):
+        """Sync UI state with the actual SSH transport state."""
+        connected = self.ssh.is_connected()
+        was_connecting = self.is_connecting
+        self._set_connected_ui(connected)
+
+        if notify_on_drop and not connected and not was_connecting:
+            self.log("[WARN] SSH session is no longer active.")
+
+    def _start_connection_monitor(self):
+        """Periodically detect dropped SSH sessions and refresh the UI."""
+        def poll():
+            was_connected = self.status_var.get() == "Connected"
+            self._refresh_connection_state(notify_on_drop=was_connected)
+            self.after(1500, poll)
+
+        self.after(1500, poll)
+
+    def on_connect(self):
+        inputs = self._get_connection_inputs()
+        if inputs is None:
             return
+        host, port, user, pw, timeout = inputs
 
         if self.is_connecting:
             messagebox.showwarning("In Progress", "Connection attempt already in progress.")
             return
 
+        host_key_mode = self._get_host_key_mode()
         self.log(f"Connecting to {host}:{port} as {user}...")
         self.is_connecting = True
 
         # Run connect in a thread so UI stays responsive
         def worker():
             try:
-                self.ssh.connect(host, port, user, pw, timeout=timeout)
+                self.ssh.connect(host, port, user, pw, timeout=timeout, host_key_mode=host_key_mode)
                 self.log("[OK] Connected.")
+                self.log(f"[INFO] Host key policy: {host_key_mode}.")
                 self._set_connected_ui(True)
             except Exception as e:
                 self.log(f"[ERROR] Connection failed: {e}")
@@ -470,27 +771,25 @@ class SSHGuiApp(tk.Tk):
 
     def test_connection(self):
         """Test SSH connectivity without full interaction."""
+        self._refresh_connection_state()
         if self.ssh.is_connected():
             messagebox.showinfo("Connected", "Already connected to SSH server.")
             return
 
-        host = self.host_var.get().strip()
-        port = int(self.port_var.get())
-        user = self.user_var.get().strip()
-        pw = self.pass_var.get()
-        timeout = self.timeout_var.get()
-
-        if not host or not user:
-            messagebox.showerror("Missing Info", "Please enter Host/IP and Username.")
+        inputs = self._get_connection_inputs()
+        if inputs is None:
             return
+        host, port, user, pw, timeout = inputs
+        host_key_mode = self._get_host_key_mode()
 
         self.log("Testing connection...")
 
         def worker():
             try:
                 temp_ssh = SSHManager()
-                temp_ssh.connect(host, port, user, pw, timeout=timeout)
+                temp_ssh.connect(host, port, user, pw, timeout=timeout, host_key_mode=host_key_mode)
                 self.log("[OK] Connection test successful.")
+                self.log(f"[INFO] Host key policy: {host_key_mode}.")
                 temp_ssh.disconnect()
             except Exception as e:
                 self.log(f"[ERROR] Connection test failed: {e}")
@@ -518,6 +817,7 @@ class SSHGuiApp(tk.Tk):
         Uses a background thread so the UI doesn't freeze.
         Maintains command history for recall.
         """
+        self._refresh_connection_state()
         if not self.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
             return
@@ -554,6 +854,7 @@ class SSHGuiApp(tk.Tk):
         dialog.transient(self)
         dialog.grab_set()
         dialog.geometry("500x100")
+        dialog.resizable(False, False)
 
         ttk.Label(dialog, text="Command:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
         cmd_var = tk.StringVar()
@@ -561,16 +862,30 @@ class SSHGuiApp(tk.Tk):
         entry.grid(row=0, column=1, padx=10, pady=10)
         entry.focus_set()
 
-        # Local history index for this dialog
-        history_state = {"index": 0}
+        # Local history state for this dialog.
+        # index=-1 means the user is on their current unsent draft.
+        history_state = {"index": -1, "draft": ""}
 
         def navigate_history(direction: int):
             """Navigate command history with Up (-1) or Down (+1)."""
             if not self.command_history:
                 return
-            history_state["index"] = max(0, min(len(self.command_history) - 1,
-                                               history_state["index"] + direction))
-            cmd_var.set(self.command_history[history_state["index"]])
+
+            current_index = history_state["index"]
+
+            if current_index == -1:
+                history_state["draft"] = cmd_var.get()
+
+            if direction < 0:
+                new_index = min(len(self.command_history) - 1, current_index + 1)
+            else:
+                new_index = current_index - 1
+
+            history_state["index"] = new_index
+            if new_index == -1:
+                cmd_var.set(history_state["draft"])
+            else:
+                cmd_var.set(self.command_history[new_index])
             entry.icursor("end")
 
         def on_key(event):
@@ -583,25 +898,34 @@ class SSHGuiApp(tk.Tk):
             elif event.keysym == "Return":
                 run_and_close()
                 return "break"
+            elif event.keysym == "Escape":
+                dialog.destroy()
+                return "break"
 
         entry.bind("<Key-Up>", on_key)
         entry.bind("<Key-Down>", on_key)
         entry.bind("<Return>", on_key)
+        entry.bind("<Escape>", on_key)
 
         def run_and_close():
             cmd = cmd_var.get().strip()
-            if cmd:
-                self.run_ssh_command(cmd)
+            if not cmd:
+                messagebox.showwarning("Missing Command", "Enter a command to run.")
+                entry.focus_set()
+                return
+
+            self.run_ssh_command(cmd)
             dialog.destroy()
 
         ttk.Button(dialog, text="Run", command=run_and_close).grid(row=1, column=1, padx=10, pady=(0, 10), sticky="e")
         ttk.Button(dialog, text="Cancel", command=dialog.destroy).grid(row=1, column=0, padx=10, pady=(0, 10), sticky="w")
 
-    def upload_config_template(self):
+    def upload_config_template(self, remote_path: str = "/tmp/uploaded_config.txt"):
         """
         Template: pick a local file, upload to a remote path.
         You will likely replace remote path rules per device type.
         """
+        self._refresh_connection_state()
         if not self.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
             return
@@ -609,9 +933,6 @@ class SSHGuiApp(tk.Tk):
         local_path = filedialog.askopenfilename(title="Select a file to upload")
         if not local_path:
             return
-
-        # Template remote path. Change this later.
-        remote_path = "/tmp/uploaded_config.txt"
 
         self.log(f"Uploading:\n  local:  {local_path}\n  remote: {remote_path}")
 

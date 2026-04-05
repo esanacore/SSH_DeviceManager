@@ -41,7 +41,7 @@ import paramiko
 # Paramiko allows SSH connections and SFTP file transfers.
 
 # Config: command history limit
-COMMAND_HISTORY_LIMIT = 50
+COMMAND_HISTORY_LIMIT = 500
 APP_CONFIG_FILE = "ssh_device_manager_config.json"
 DEFAULT_SECTIONS_FILE = "sections.json"
 
@@ -261,16 +261,22 @@ class SSHGuiApp(tk.Tk):
             "entry_fg": "black",
             "select_bg": "#0078d7",
             "select_fg": "white",
+            "btn_bg": "#f0f0f0",
+            "border": "#999999",
+            "label_fg": "black",
         },
         "Solarized Dark": {
-            "bg": "#002b36",
-            "fg": "#839496",
-            "text_bg": "#073642",
-            "text_fg": "#93a1a1",
-            "entry_bg": "#073642",
-            "entry_fg": "#93a1a1",
-            "select_bg": "#586e75",
-            "select_fg": "#fdf6e3",
+            "bg": "#002b36",            # base03 - main window background
+            "fg": "#839496",            # base0  - default body text
+            "text_bg": "#002b36",       # base03 - terminal/editor background
+            "text_fg": "#839496",       # base0  - terminal/editor text
+            "entry_bg": "#073642",      # base02 - input fields (raised surface)
+            "entry_fg": "#93a1a1",      # base1  - input text (slightly brighter)
+            "select_bg": "#268bd2",     # blue   - selection highlight
+            "select_fg": "#fdf6e3",     # base3  - selected text
+            "btn_bg": "#073642",        # base02 - button background
+            "border": "#586e75",        # base01 - borders and separators
+            "label_fg": "#93a1a1",      # base1  - section titles / labels
         },
         "Solarized Light": {
             "bg": "#fdf6e3",
@@ -279,18 +285,24 @@ class SSHGuiApp(tk.Tk):
             "text_fg": "#586e75",
             "entry_bg": "#eee8d5",
             "entry_fg": "#586e75",
-            "select_bg": "#93a1a1",
-            "select_fg": "#002b36",
+            "select_bg": "#268bd2",
+            "select_fg": "#fdf6e3",
+            "btn_bg": "#eee8d5",
+            "border": "#93a1a1",
+            "label_fg": "#586e75",
         },
         "Dark Mode": {
             "bg": "#1e1e1e",
             "fg": "#d4d4d4",
-            "text_bg": "#252526",
-            "textFg": "#d4d4d4",
+            "text_bg": "#1e1e1e",
+            "text_fg": "#d4d4d4",
             "entry_bg": "#3c3c3c",
             "entry_fg": "#d4d4d4",
             "select_bg": "#094771",
             "select_fg": "white",
+            "btn_bg": "#333333",
+            "border": "#555555",
+            "label_fg": "#d4d4d4",
         },
         "Retro Terminal": {
             "bg": "#000000",
@@ -301,6 +313,9 @@ class SSHGuiApp(tk.Tk):
             "entry_fg": "#00ff00",
             "select_bg": "#00ff00",
             "select_fg": "#000000",
+            "btn_bg": "#000000",
+            "border": "#00ff00",
+            "label_fg": "#00ff00",
         },
         "Cyberpunk": {
             "bg": "#0b0c15",        # Very dark blue/black
@@ -311,6 +326,9 @@ class SSHGuiApp(tk.Tk):
             "entry_fg": "#fcee0a",  # Bright Yellow
             "select_bg": "#ff00ff",
             "select_fg": "#0b0c15",
+            "btn_bg": "#1a0a30",
+            "border": "#ff00ff",
+            "label_fg": "#00f3ff",
         },
     }
 
@@ -645,58 +663,73 @@ class SSHGuiApp(tk.Tk):
     def apply_theme(self, theme_name: str):
         theme = self.THEMES.get(theme_name, self.THEMES["Default"])
 
+        # Resolve optional keys with sensible fallbacks
+        btn_bg = theme.get("btn_bg", theme["bg"])
+        border = theme.get("border", theme["fg"])
+        label_fg = theme.get("label_fg", theme["fg"])
+
         # Configure main window background
         self.configure(bg=theme["bg"])
 
         # Configure styles for ttk widgets
         style = ttk.Style(self)
-        style.theme_use("clam")  # 'clam' allows for easier color customization
+        style.theme_use("clam")
 
         style.configure(
             ".",
             background=theme["bg"],
             foreground=theme["fg"],
             fieldbackground=theme["entry_bg"],
+            bordercolor=border,
         )
         style.configure("TLabel", background=theme["bg"], foreground=theme["fg"])
         style.configure(
             "TButton",
-            background=theme["bg"],
+            background=btn_bg,
             foreground=theme["fg"],
-            bordercolor=theme["fg"],
+            bordercolor=border,
         )
         style.configure(
             "TEntry",
             fieldbackground=theme["entry_bg"],
             foreground=theme["entry_fg"],
+            bordercolor=border,
+            insertcolor=theme["entry_fg"],
         )
         style.configure(
             "TCombobox",
             fieldbackground=theme["entry_bg"],
             foreground=theme["entry_fg"],
             arrowcolor=theme["fg"],
+            bordercolor=border,
         )
         style.configure(
             "TLabelframe",
             background=theme["bg"],
-            foreground=theme["fg"],
-            bordercolor=theme["fg"],
+            foreground=label_fg,
+            bordercolor=border,
         )
         style.configure(
             "TLabelframe.Label",
             background=theme["bg"],
-            foreground=theme["fg"],
+            foreground=label_fg,
         )
         style.configure(
             "TCheckbutton",
             background=theme["bg"],
             foreground=theme["fg"],
+            indicatorcolor=theme["entry_bg"],
         )
         style.configure(
             "TSpinbox",
             fieldbackground=theme["entry_bg"],
             foreground=theme["entry_fg"],
             arrowcolor=theme["fg"],
+            bordercolor=border,
+        )
+        style.configure(
+            "TSeparator",
+            background=border,
         )
 
         # Map dynamic states (e.g. hover, active)
@@ -712,17 +745,22 @@ class SSHGuiApp(tk.Tk):
         )
         style.map(
             "TCombobox",
-            fieldbackground=[("readonly", theme["bg"])],
-            foreground=[("readonly", theme["fg"])],
+            fieldbackground=[("readonly", theme["entry_bg"])],
+            foreground=[("readonly", theme["entry_fg"])],
             selectbackground=[("readonly", theme["select_bg"])],
             selectforeground=[("readonly", theme["select_fg"])],
+        )
+        style.map(
+            "TCheckbutton",
+            background=[("active", theme["bg"])],
+            indicatorcolor=[("selected", theme["select_bg"])],
         )
 
         # Configure standard Tk widgets (Text, etc.)
         self.output_text.configure(
             bg=theme["text_bg"],
             fg=theme["text_fg"],
-            insertbackground=theme["fg"],  # Cursor color
+            insertbackground=theme["fg"],
             selectbackground=theme["select_bg"],
             selectforeground=theme["select_fg"],
         )
@@ -1165,21 +1203,53 @@ class SSHGuiApp(tk.Tk):
         return parsed
 
     def _get_connection_inputs(self) -> Optional[tuple[str, int, str, str, int]]:
-        """Validate the current connection form and return normalized values."""
+        """Validate the current connection form and return normalized values.
+
+        Each missing or invalid field is reported individually so the user
+        knows exactly what to fix.  Returns ``None`` when validation fails.
+        """
+        errors: List[str] = []
+
         host = self.host_var.get().strip()
         user = self.user_var.get().strip()
         pw = self.pass_var.get()
 
-        if not host or not user:
-            messagebox.showerror("Missing Info", "Please enter Host/IP and Username.")
-            return None
+        if not host:
+            errors.append("Host / IP is empty.")
+        if not user:
+            errors.append("Username is empty.")
+        if not pw:
+            errors.append("Password is empty.")
 
-        port = self._parse_int_input(str(self.port_var.get()), "Port", minimum=1, maximum=65535)
-        if port is None:
-            return None
+        # --- Port ---
+        port: Optional[int] = None
+        try:
+            port = int(self.port_var.get())
+        except (TypeError, ValueError, tk.TclError):
+            errors.append("Port is empty or not a valid number.")
 
-        timeout = self._parse_int_input(str(self.timeout_var.get()), "Connection Timeout", minimum=1, maximum=300)
-        if timeout is None:
+        if port is not None and (port < 1 or port > 65535):
+            errors.append("Port must be between 1 and 65535.")
+            port = None
+
+        # --- Timeout ---
+        timeout: Optional[int] = None
+        try:
+            timeout = int(self.timeout_var.get())
+        except (TypeError, ValueError, tk.TclError):
+            errors.append("Connection Timeout is empty or not a valid number.")
+
+        if timeout is not None and (timeout < 1 or timeout > 300):
+            errors.append("Connection Timeout must be between 1 and 300.")
+            timeout = None
+
+        if errors:
+            summary = "\n".join(f"  \u2022 {e}" for e in errors)
+            self.log(f"[ERROR] Connection form has problems:\n{summary}")
+            messagebox.showerror(
+                "Invalid Connection Details",
+                "Please fix the following:\n\n" + "\n".join(f"\u2022 {e}" for e in errors),
+            )
             return None
 
         return host, port, user, pw, timeout
@@ -1244,6 +1314,27 @@ class SSHGuiApp(tk.Tk):
                 self.log("[OK] Connected.")
                 self.log(f"[INFO] Host key policy: {host_key_mode}.")
                 self._set_connected_ui(True)
+            except paramiko.AuthenticationException:
+                self.log(
+                    f"[ERROR] Authentication failed for '{user}@{host}:{port}'.\n"
+                    f"  \u2022 Double-check your Username and Password.\n"
+                    f"  \u2022 The server may not allow password authentication."
+                )
+                self._set_connected_ui(False)
+            except paramiko.SSHException as e:
+                self.log(
+                    f"[ERROR] SSH error while connecting to {host}:{port}:\n"
+                    f"  \u2022 {e}\n"
+                    f"  \u2022 Verify the host is reachable and running an SSH server."
+                )
+                self._set_connected_ui(False)
+            except OSError as e:
+                self.log(
+                    f"[ERROR] Network error connecting to {host}:{port}:\n"
+                    f"  \u2022 {e}\n"
+                    f"  \u2022 Check the Host/IP and Port, and that the device is online."
+                )
+                self._set_connected_ui(False)
             except Exception as e:
                 self.log(f"[ERROR] Connection failed: {e}")
                 self._set_connected_ui(False)
@@ -1287,6 +1378,21 @@ class SSHGuiApp(tk.Tk):
                 self.log("[OK] Connection test successful.")
                 self.log(f"[INFO] Host key policy: {host_key_mode}.")
                 temp_ssh.disconnect()
+            except paramiko.AuthenticationException:
+                self.log(
+                    f"[ERROR] Test failed \u2014 authentication rejected for '{user}@{host}:{port}'.\n"
+                    f"  \u2022 Double-check your Username and Password."
+                )
+            except paramiko.SSHException as e:
+                self.log(
+                    f"[ERROR] Test failed \u2014 SSH error: {e}\n"
+                    f"  \u2022 Verify the host is reachable and running an SSH server."
+                )
+            except OSError as e:
+                self.log(
+                    f"[ERROR] Test failed \u2014 network error: {e}\n"
+                    f"  \u2022 Check the Host/IP and Port, and that the device is online."
+                )
             except Exception as e:
                 self.log(f"[ERROR] Connection test failed: {e}")
 

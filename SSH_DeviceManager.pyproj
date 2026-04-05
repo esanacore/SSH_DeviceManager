@@ -25,7 +25,13 @@
     <Compile Include="SSH_DeviceManager.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="docs\READING_GUIDE.md" />
+    <Content Include="docs\TEST_GHERKIN.md" />
+    <Content Include="docs\TEST_MATRIX.md" />
     <Content Include="sections.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="docs\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

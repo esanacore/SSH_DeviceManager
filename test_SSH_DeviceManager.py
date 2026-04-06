@@ -156,8 +156,7 @@ sys.modules['tkinter.filedialog'] = filedialog
 # with the real tkinter (before our mock was set up). This forces a fresh import
 # of SSHGuiApp so it inherits from our DummyTkBase mock, not the real tkinter.Tk.
 for _key in list(sys.modules.keys()):
-    if _key == 'ssh_device_manager' or _key.startswith('ssh_device_manager.') \
-            or _key == 'SSH_DeviceManager':
+    if _key in ('ssh_device_manager', 'SSH_DeviceManager') or _key.startswith('ssh_device_manager.'):
         del sys.modules[_key]
 
 import SSH_DeviceManager

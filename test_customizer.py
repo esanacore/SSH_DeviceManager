@@ -17,6 +17,9 @@ filedialog = types.ModuleType('tkinter.filedialog')
 
 class DummyWidget(MagicMock):
     def __init__(self, *a, **k):
+        # Ignore positional args so they are not passed to MagicMock.__init__ as
+        # the `spec` parameter, which would cause InvalidSpecError in Python 3.11+
+        # when the parent widget is itself a Mock object.
         super().__init__()
     def pack(self, *a, **k): pass
     def grid(self, *a, **k): pass

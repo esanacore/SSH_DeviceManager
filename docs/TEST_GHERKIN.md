@@ -2,8 +2,8 @@
 # SSH Device Manager - Test Specifications (Gherkin)
 
 > **Test File:** `test_SSH_DeviceManager.py`
-> **Total Scenarios:** 74
-> **Last Updated:** 2026-04-04
+> **Total Scenarios:** 92
+> **Last Updated:** 2026-04-05
 > **Format:** Gherkin (Given/When/Then) for requirements traceability
 
 ---
@@ -31,6 +31,7 @@
 19. [App Config Persistence](#feature-app-config-persistence)
 20. [Host History Limit](#feature-host-history-limit)
 21. [Disconnect Credential Clearing](#feature-disconnect-credential-clearing)
+22. [Connection State Monitor](#feature-connection-state-monitor)
 
 ---
 
@@ -149,6 +150,37 @@ Feature: SSH Manager
     When I call upload_file with local "local" and remote "remote"
     Then an SFTP session is opened
     And sftp.put is called with "local" and "remote"
+
+  @unit @UT-SSH-12
+  Scenario: Run command captures stderr alongside stdout
+    Given an SSHManager with a connected client
+    And exec_command returns stdout "out" and stderr "err"
+    When I call run_command with "ls"
+    Then the result contains "out"
+    And the result contains "err"
+
+  @unit @UT-SSH-13
+  Scenario: Connect applies correct host key policy per mode
+    Given an SSHManager
+    When I call connect with host_key_mode "strict"
+    Then RejectPolicy is set
+    When I call connect with host_key_mode "auto"
+    Then AutoAddPolicy is set
+    When I call connect with host_key_mode "warning"
+    Then WarningPolicy is set
+
+  @unit @UT-SSH-14
+  Scenario: Upload file without connection raises error
+    Given an SSHManager with no client
+    When I call upload_file with local "local" and remote "remote"
+    Then a RuntimeError is raised with message containing "Not connected"
+
+  @unit @UT-SSH-15
+  Scenario: Upload file reuses existing SFTP session
+    Given an SSHManager with an active client and an existing SFTP session
+    When I call upload_file with local "local" and remote "remote"
+    Then open_sftp is NOT called again
+    And the existing SFTP session's put method is called
 ```
 
 ---
@@ -226,6 +258,63 @@ Feature: GUI App Core
     When I call save_output
     Then the file "/tmp/saved_output.txt" is opened for writing
     And "some output" is written to the file
+
+  @unit @UT-APP-10
+  Scenario: Save output skipped when terminal is empty
+    Given an app with output text ""
+    When I call save_output
+    Then no file dialog is opened
+    And no file is written
+
+  @unit @UT-APP-11
+  Scenario: Save output handles write error gracefully
+    Given an app with output text "some output"
+    And the save dialog returns "/tmp/saved_output.txt"
+    And open() raises PermissionError
+    When I call save_output
+    Then the log contains "Error saving"
+    And no exception is propagated
+
+  @unit @UT-APP-12
+  Scenario: Clear output empties terminal
+    Given an app with output text "some output"
+    When I call clear_output
+    Then the output text widget is empty
+
+  @unit @UT-APP-13
+  Scenario: Double-click connect guard prevents duplicate threads
+    Given an app that is already connecting
+    When I call on_connect again before the first completes
+    Then no additional background thread is spawned
+
+  @unit @UT-APP-14
+  Scenario: Run command when not connected shows error
+    Given an app that is NOT connected
+    When I call run_ssh_command with "show version"
+    Then the log contains "Not connected"
+    And no background thread is spawned
+
+  @unit @UT-APP-15
+  Scenario: Upload template when not connected shows error
+    Given an app that is NOT connected
+    When I call upload_config_template
+    Then the log contains "Not connected"
+    And no file dialog is opened
+
+  @unit @UT-APP-16
+  Scenario: Upload template cancelled by user
+    Given an app that is connected
+    And the file dialog returns None (user cancelled)
+    When I call upload_config_template
+    Then no background thread is spawned
+    And ssh.upload_file is NOT called
+
+  @unit @UT-APP-17
+  Scenario: Log message includes HH:MM:SS timestamp
+    Given an app
+    When I call log with "hello"
+    Then the queued message matches the pattern HH:MM:SS
+    And the message contains "hello"
 ```
 
 ---
@@ -534,6 +623,20 @@ Feature: Profiles
     And the confirmation dialog returns False
     When I call delete_selected_profile
     Then "KeepMe" still exists in app_config["profiles"]
+
+  @unit @UT-PR-07
+  Scenario: Load missing profile shows error
+    Given no profile named "Ghost" exists
+    When I call load_selected_profile with "Ghost"
+    Then the log contains "not found" or an error message
+    And host_var.set is never called
+
+  @unit @UT-PR-08
+  Scenario: Save profile uses dropdown name when text field is empty
+    Given profile_name_var is ""
+    And profile_select_var is "ExistingProfile"
+    When I call save_profile
+    Then the profile is saved under the name "ExistingProfile"
 ```
 
 ---
@@ -724,6 +827,7 @@ Feature: Command History
 
     When I run "cmd_a" again
     Then command_history[0] is "cmd_a"
+    And "cmd_a" appears exactly once in command_history
 
   @integration @IT-CH-02
   Scenario: History respects COMMAND_HISTORY_LIMIT
@@ -817,4 +921,28 @@ Feature: Disconnect Credential Clearing
     Given clear_creds_var is False
     When I disconnect
     Then pass_var.set is NOT called
+```
+
+---
+
+## Feature: Connection State Monitor
+
+```gherkin
+Feature: Connection State Monitor
+  The app detects dropped SSH connections and updates the UI accordingly.
+
+  @unit @UT-CS-01
+  Scenario: Detect a dropped SSH connection
+    Given an app that is connected
+    And the SSH transport becomes inactive (connection dropped)
+    When the connection state monitor checks
+    Then the UI is set to disconnected
+    And the log contains a message about the lost connection
+
+  @unit @UT-CS-02
+  Scenario: No false alarm when already disconnected
+    Given an app that is NOT connected
+    When the connection state monitor checks
+    Then the UI state does not change
+    And no spurious log messages are generated
 ```

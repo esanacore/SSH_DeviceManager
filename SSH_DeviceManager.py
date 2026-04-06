@@ -25,7 +25,9 @@ import paramiko          # noqa: F401
 import threading         # noqa: F401
 from tkinter import filedialog, messagebox  # noqa: F401
 
-
-if __name__ == "__main__":
+def main():
     app = SSHGuiApp()
     app.mainloop()
+
+if __name__ == "__main__":
+    main()

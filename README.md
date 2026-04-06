@@ -17,7 +17,7 @@ ssh_device_manager/          # Main package
     app.py                   # SSHGuiApp (Tkinter orchestrator)
 
 SSH_DeviceManager.py         # Thin launcher / backward-compat shim
-test_SSH_DeviceManager.py    # 74 unit + integration tests
+test_SSH_DeviceManager.py    # 92 unit + integration tests
 customizer.py                # Standalone sections.json editor
 docs/                        # Test matrix, Gherkin specs, reading guide
 ```
@@ -88,15 +88,15 @@ docs/                        # Test matrix, Gherkin specs, reading guide
 ```
 
 Supported command tokens:
-- `run:...` — execute the right-hand string as an SSH command.
-- `__upload_template__` — open file picker and upload via `upload_config_template()`.
-- `__send_file__` — open SCP-style dialog and upload via `send_file_scp()`.
-- `__custom_command__` — open the Run Custom Command dialog.
+- `run:...` ï¿½ execute the right-hand string as an SSH command.
+- `__upload_template__` ï¿½ open file picker and upload via `upload_config_template()`.
+- `__send_file__` ï¿½ open SCP-style dialog and upload via `send_file_scp()`.
+- `__custom_command__` ï¿½ open the Run Custom Command dialog.
 
 Rules:
 - `enabled` controls visibility of buttons.
 - `max_buttons` limits visible buttons; extras are truncated with a warning.
-- Keep secrets out of `sections.json` — it's intended for UI metadata only.
+- Keep secrets out of `sections.json` ï¿½ it's intended for UI metadata only.
 
 ## Themes
 
@@ -118,16 +118,16 @@ Built-in themes: Default, Solarized Dark, Solarized Light, Dark Mode, Retro Term
 
 ## Tests
 
-Run all 74 unit and integration tests (mocks `tkinter`, `paramiko`):
+Run all 92 unit and integration tests (mocks `tkinter`, `paramiko`):
 
 ```bash
 python -m unittest test_SSH_DeviceManager.py -v
 ```
 
 Test documentation:
-- `docs/TEST_MATRIX.md` — Test IDs, descriptions, and requirements traceability matrix
-- `docs/TEST_GHERKIN.md` — Gherkin behavioral specifications (Given/When/Then)
-- `docs/READING_GUIDE.md` — How to navigate the test documentation
+- `docs/TEST_MATRIX.md` ï¿½ Test IDs, descriptions, and requirements traceability matrix
+- `docs/TEST_GHERKIN.md` ï¿½ Gherkin behavioral specifications (Given/When/Then)
+- `docs/READING_GUIDE.md` ï¿½ How to navigate the test documentation
 
 ## Contributing & Workflow
 

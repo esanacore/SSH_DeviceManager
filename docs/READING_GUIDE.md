@@ -21,8 +21,8 @@ docs/
 | **TEST_MATRIX.md** | Developers, QA leads, auditors | Lookup any test by ID, see exactly what it asserts, trace it back to a requirement |
 | **TEST_GHERKIN.md** | Product owners, QA, non-developers | Understand *what the app should do* in plain English without reading code |
 
-Both documents describe the **same 74 tests**. They are two views of the same
-data — one structured for machines/databases, one structured for humans.
+Both documents describe the **same 92 tests**. They are two views of the same
+data ï¿½ one structured for machines/databases, one structured for humans.
 
 ---
 
@@ -32,7 +32,7 @@ data — one structured for machines/databases, one structured for humans.
 
 ```
 > Test File: test_SSH_DeviceManager.py
-> Total Tests: 74 (58 unit + 16 integration)
+> Total Tests: 92 (76 unit + 16 integration)
 > Run Command: python -m unittest test_SSH_DeviceManager.py -v
 ```
 
@@ -59,7 +59,7 @@ How to read each column:
 | **Tests** | Number of `test_*` methods inside that class |
 | **Type** | **Unit** = tests one method in isolation; **Integration** = tests a multi-step flow |
 
-The **TOTAL** row at the bottom is your quick health check: 21 classes, 74 tests.
+The **TOTAL** row at the bottom is your quick health check: 23 classes, 92 tests.
 
 ### 1.3 Unit Test Detail Tables
 
@@ -76,9 +76,9 @@ Column definitions:
 | Column | Meaning | Example |
 |---|---|---|
 | **ID** | Unique, stable identifier you can reference in bug tickets, Jira, TestRail, etc. | `UT-SSH-03` |
-| **Test Method** | Exact Python method name — you can search the test file for this string | `test_is_connected_dead_transport` |
+| **Test Method** | Exact Python method name ï¿½ you can search the test file for this string | `test_is_connected_dead_transport` |
 | **Description** | One-line summary of the setup / scenario | "Client with dead transport" |
-| **Verifies** | The specific assertions made — what *must* be true for the test to pass | "Returns False, auto-disconnects, clears client" |
+| **Verifies** | The specific assertions made ï¿½ what *must* be true for the test to pass | "Returns False, auto-disconnects, clears client" |
 
 ### 1.4 Integration Test Detail Tables
 
@@ -92,7 +92,7 @@ Integration tables use a slightly different format:
 
 The **Flow** column replaces Description + Verifies with a step-by-step
 narrative using `->` arrows. Bold text marks the user-visible actions.
-Each arrow represents a sequential dependency — Step 2 can't happen without
+Each arrow represents a sequential dependency ï¿½ Step 2 can't happen without
 Step 1 succeeding.
 
 ### 1.5 The ID System
@@ -133,6 +133,7 @@ Every test has a unique ID with a predictable structure:
 | CR | Config Round-trip | `TestAppConfigRoundTrip` |
 | HL | Host History Limit | `TestHostHistoryLimit` |
 | DC | Disconnect Credentials | `TestDisconnectClearsCredentials` |
+| CS | Connection State | `TestConnectionStateMonitor` |
 
 #### Example lookups
 
@@ -140,7 +141,7 @@ Every test has a unique ID with a predictable structure:
 > ? Search the ID column for `UT-VAL-04` (empty password) and `IT-VB-01`
 >   (integration test that includes empty password in the flow).
 
-> "Test UT-CE-01 failed in CI — what broke?"
+> "Test UT-CE-01 failed in CI ï¿½ what broke?"
 > ? Find `UT-CE-01` in section 5. It tests that `AuthenticationException`
 >   produces "Authentication failed" in the log. The method name is
 >   `test_auth_exception` in class `TestOnConnectErrors`.
@@ -251,7 +252,7 @@ Scenario: Dead transport triggers auto-disconnect
 |---|---|
 | `@unit` | This is a unit test (isolated, single-method) |
 | `@integration` | This is an integration test (multi-step flow) |
-| `@UT-SSH-03` | Cross-reference ID — same as in TEST_MATRIX.md |
+| `@UT-SSH-03` | Cross-reference ID ï¿½ same as in TEST_MATRIX.md |
 
 Tags let you filter scenarios. In a BDD runner like `behave`:
 ```bash
@@ -301,7 +302,7 @@ Scenario: Wrong password then correct password
   And the UI is set to connected
 ```
 
-Notice the blank lines — they visually separate **phases** of the test:
+Notice the blank lines ï¿½ they visually separate **phases** of the test:
 1. Phase 1: Attempt with wrong password ? fails
 2. Phase 2: Fix password ? succeeds
 
@@ -337,7 +338,7 @@ Feature: SSH Manager
   and file upload operations.
 ```
 
-This is not executable — it's documentation for the reader explaining *what
+This is not executable ï¿½ it's documentation for the reader explaining *what
 this group of scenarios is about* and *why it exists*.
 
 ---
@@ -389,7 +390,7 @@ The two documents share IDs. Here's how to jump between them:
 1. Open `TEST_MATRIX.md` ? Section 2. SSH Manager ? row `UT-SSH-03`
 2. Description: "Client with dead transport"
 3. Verifies: "Returns False, auto-disconnects, clears client"
-4. Method: `test_is_connected_dead_transport` — search the test file for this
+4. Method: `test_is_connected_dead_transport` ï¿½ search the test file for this
 5. Open `TEST_GHERKIN.md` ? Feature: SSH Manager ? `@UT-SSH-03` for the
    plain-English version of what should happen
 
@@ -402,7 +403,7 @@ The two documents share IDs. Here's how to jump between them:
 | Event | Action |
 |---|---|
 | **New test added** | Add a row to `TEST_MATRIX.md` with the next ID in sequence. Add a Scenario to `TEST_GHERKIN.md` with matching tag. Update the total count in both headers. |
-| **Test deleted** | Remove the row/scenario. Do NOT reuse the ID — retired IDs stay retired so old bug tickets still make sense. |
+| **Test deleted** | Remove the row/scenario. Do NOT reuse the ID ï¿½ retired IDs stay retired so old bug tickets still make sense. |
 | **Test renamed** | Update the Test Method column. The ID stays the same. |
 | **New requirement** | Add a row to the RTM. Assign the next `REQ-` number. Link existing test IDs or note "untested". |
 | **Feature removed** | Mark the requirement as "Deprecated" rather than deleting, so audit trails remain. |
@@ -414,7 +415,7 @@ After editing, run this quick check:
 ```powershell
 # Count tests in code vs docs
 python -m unittest test_SSH_DeviceManager.py -v 2>&1 | Select-String "^Ran"
-# Should match the "Total Tests: 74" in both doc headers
+# Should match the "Total Tests: 92" in both doc headers
 ```
 
 ---
@@ -426,15 +427,15 @@ python -m unittest test_SSH_DeviceManager.py -v 2>&1 | Select-String "^Ran"
 | **Unit Test** | Tests a single method or function in isolation. External dependencies (SSH, filesystem, GUI) are replaced with mocks. |
 | **Integration Test** | Tests a multi-step workflow where several methods interact. Still uses mocks for external I/O, but exercises the real control flow between methods. |
 | **Mock** | A fake object that replaces a real dependency (e.g., a fake SSH connection). Lets tests run without a real server. |
-| **RTM** | Requirements Traceability Matrix — a table that maps every requirement to the tests that prove it works. |
+| **RTM** | Requirements Traceability Matrix ï¿½ a table that maps every requirement to the tests that prove it works. |
 | **Gherkin** | A plain-English format for writing test scenarios. Uses Given/When/Then keywords. |
-| **BDD** | Behavior-Driven Development — a methodology where tests are written as behavioral specifications before code. |
+| **BDD** | Behavior-Driven Development ï¿½ a methodology where tests are written as behavioral specifications before code. |
 | **Feature** | In Gherkin, a group of related scenarios describing one capability. Maps to a test class. |
 | **Scenario** | In Gherkin, a single test case. Maps to one `test_*` method. |
 | **Tag** | A label on a Gherkin scenario (e.g., `@unit`, `@UT-SSH-03`) used for filtering and cross-referencing. |
 | **Forward Trace** | Following a requirement to the tests that cover it. Answers: "Is this requirement tested?" |
 | **Reverse Trace** | Following a test back to the requirement it satisfies. Answers: "Why does this test exist?" |
-| **Gap** | A requirement with no test IDs — represents untested behavior. |
+| **Gap** | A requirement with no test IDs ï¿½ represents untested behavior. |
 | **Scenario Outline** | A parameterized Gherkin scenario that runs once per row in an Examples table. |
 | **TclError** | A Tkinter-specific exception raised when a `tk.IntVar` is read while its GUI field is blank. |
 | **Transport** | Paramiko's underlying SSH connection layer. `is_active()` checks if the TCP session is still alive. |

@@ -154,6 +154,28 @@ sys.modules['tkinter.filedialog'] = filedialog
 
 import SSH_DeviceManager
 
+class TestShimExports(unittest.TestCase):
+    """Tests that the SSH_DeviceManager.py shim correctly re-exports expected names."""
+
+    def test_expected_exports(self):
+        expected_names = [
+            "ActionButton", "ButtonSection", "ToolTip",
+            "SSHManager", "SSHGuiApp", "THEMES",
+            "COMMAND_HISTORY_LIMIT", "APP_CONFIG_FILE", "DEFAULT_SECTIONS_FILE",
+            "paramiko", "threading", "filedialog", "messagebox"
+        ]
+        for name in expected_names:
+            self.assertTrue(
+                hasattr(SSH_DeviceManager, name),
+                f"Expected '{name}' to be exported by SSH_DeviceManager.py shim"
+            )
+
+    @patch("SSH_DeviceManager.SSHGuiApp")
+    def test_main_execution(self, mock_app):
+        SSH_DeviceManager.main()
+        mock_app.assert_called_once()
+        mock_app.return_value.mainloop.assert_called_once()
+
 class TestDataModels(unittest.TestCase):
     def test_action_button(self):
         handler = MagicMock()
@@ -285,6 +307,39 @@ class TestSSHManager(unittest.TestCase):
         self.assertIn("\ufffd", result)
 
     @patch('SSH_DeviceManager.paramiko.SSHClient')
+    def test_run_command_with_stderr(self, mock_ssh_client):
+        mock_client_instance = mock_ssh_client.return_value
+        self.ssh_manager.client = mock_client_instance
+
+        mock_stdout = MagicMock()
+        mock_stdout.read.return_value = b"normal output"
+        mock_stderr = MagicMock()
+        mock_stderr.read.return_value = b"error output"
+
+        mock_client_instance.exec_command.return_value = (None, mock_stdout, mock_stderr)
+
+        result = self.ssh_manager.run_command("bad_cmd")
+
+        self.assertIn("normal output", result)
+        self.assertIn("error output", result)
+
+    @patch('SSH_DeviceManager.paramiko.SSHClient')
+    def test_connect_host_key_policies(self, mock_ssh_client):
+        mock_client_instance = mock_ssh_client.return_value
+
+        for mode, expected_policy in [
+            ("strict", SSH_DeviceManager.paramiko.RejectPolicy),
+            ("warning", SSH_DeviceManager.paramiko.WarningPolicy),
+            ("auto", SSH_DeviceManager.paramiko.AutoAddPolicy),
+        ]:
+            mock_client_instance.reset_mock()
+            self.ssh_manager.client = None
+            self.ssh_manager.connect("host", 22, "user", "pass", host_key_mode=mode)
+            policy_arg = mock_client_instance.set_missing_host_key_policy.call_args[0][0]
+            self.assertIsInstance(policy_arg, expected_policy,
+                f"Mode '{mode}' should use {expected_policy.__name__}")
+
+    @patch('SSH_DeviceManager.paramiko.SSHClient')
     def test_upload_file(self, mock_ssh_client):
         mock_client_instance = mock_ssh_client.return_value
         self.ssh_manager.client = mock_client_instance
@@ -295,6 +350,24 @@ class TestSSHManager(unittest.TestCase):
         
         self.assertIsNotNone(self.ssh_manager.sftp)
         mock_sftp.put.assert_called_with("local", "remote")
+
+    def test_upload_file_not_connected(self):
+        with self.assertRaises(RuntimeError):
+            self.ssh_manager.upload_file("local", "remote")
+
+    @patch('SSH_DeviceManager.paramiko.SSHClient')
+    def test_upload_file_reuses_sftp(self, mock_ssh_client):
+        mock_client_instance = mock_ssh_client.return_value
+        self.ssh_manager.client = mock_client_instance
+        mock_sftp = MagicMock()
+        mock_client_instance.open_sftp.return_value = mock_sftp
+
+        self.ssh_manager.upload_file("local1", "remote1")
+        self.ssh_manager.upload_file("local2", "remote2")
+
+        # open_sftp should only be called once; second upload reuses it
+        mock_client_instance.open_sftp.assert_called_once()
+        self.assertEqual(mock_sftp.put.call_count, 2)
 
 class TestSSHGuiApp(unittest.TestCase):
     @patch('ssh_device_manager.app.SSHManager')
@@ -473,6 +546,109 @@ class TestSSHGuiApp(unittest.TestCase):
             app.save_output()
             mock_file.assert_called_with("/tmp/saved_output.txt", "w", encoding="utf-8")
             mock_file().write.assert_called_with("some output")
+
+    def test_save_output_empty(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.output_text = MagicMock()
+        app.output_text.get.return_value = "   "  # whitespace only
+        app.log = MagicMock()
+
+        with patch("builtins.open", unittest.mock.mock_open()) as mock_file:
+            app.save_output()
+            # Should NOT open a file when output is blank
+            mock_file.assert_not_called()
+
+    def test_save_output_write_error(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.output_text = MagicMock()
+        app.output_text.get.return_value = "some output"
+        app.log = MagicMock()
+
+        SSH_DeviceManager.filedialog.asksaveasfilename.return_value = "/tmp/fail.txt"
+
+        with patch("builtins.open", side_effect=IOError("disk full")):
+            app.save_output()
+            log_messages = [c[0][0] for c in app.log.call_args_list]
+            self.assertTrue(any("ERROR" in m and "disk full" in m for m in log_messages))
+
+    def test_clear_output(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.output_text = MagicMock()
+
+        app.clear_output()
+
+        # Should enable, delete all, then re-disable the text widget
+        app.output_text.configure.assert_any_call(state="normal")
+        app.output_text.delete.assert_called_with("1.0", "end")
+        app.output_text.configure.assert_any_call(state="disabled")
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_on_connect_double_click_guard(self, mock_thread):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.host_var.get.return_value = "192.168.1.1"
+        app.user_var.get.return_value = "admin"
+        app.port_var.get.return_value = 22
+        app.pass_var.get.return_value = "password"
+        app.timeout_var.get.return_value = 10
+        app.ssh = MagicMock()
+        app.log = MagicMock()
+
+        # Simulate an in-progress connection
+        app.is_connecting = True
+
+        app.on_connect()
+
+        # Thread should NOT be spawned when already connecting
+        mock_thread.assert_not_called()
+
+    def test_run_ssh_command_not_connected(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.log = MagicMock()
+
+        app.run_ssh_command("show version")
+
+        # Should not add to command history if not connected
+        self.assertEqual(len(app.command_history), 0)
+
+    def test_upload_config_template_not_connected(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.log = MagicMock()
+
+        app.upload_config_template()
+
+        # Should not attempt upload
+        app.ssh.upload_file.assert_not_called()
+
+    def test_upload_config_template_cancelled(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = True
+        app.log = MagicMock()
+
+        SSH_DeviceManager.filedialog.askopenfilename.return_value = ""
+
+        app.upload_config_template()
+
+        # Should not attempt upload when dialog is cancelled
+        app.ssh.upload_file.assert_not_called()
+
+    def test_log_message_has_timestamp(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+
+        while not app.log_queue.empty():
+            app.log_queue.get()
+
+        app.log("hello")
+        msg = app.log_queue.get()
+
+        # Timestamp format [HH:MM:SS]
+        import re
+        self.assertRegex(msg, r"\[\d{2}:\d{2}:\d{2}\]")
+
 
 class TestGetConnectionInputs(unittest.TestCase):
     """Tests for the _get_connection_inputs validation method."""
@@ -817,6 +993,65 @@ class TestProfiles(unittest.TestCase):
         # askyesno returns False by default in our stub
         app.delete_selected_profile()
         self.assertIn("KeepMe", app.app_config["profiles"])
+
+    def test_load_missing_profile_shows_error(self):
+        app = self._make_app()
+        app._refresh_profile_list = MagicMock()
+        app.profile_select_var.get.return_value = "DoesNotExist"
+        app.load_selected_profile()
+        # Should not populate fields
+        app.host_var.set.assert_not_called()
+        # Should trigger profile list refresh (cleanup stale list)
+        app._refresh_profile_list.assert_called()
+
+    def test_save_profile_via_dropdown_name(self):
+        """When profile_name_var is empty, use profile_select_var instead."""
+        app = self._make_app()
+        app.profile_name_var.get.return_value = ""
+        app.profile_select_var.get.return_value = "FromDropdown"
+        app._save_app_config = MagicMock()
+        app._refresh_profile_list = MagicMock()
+
+        app.save_profile()
+
+        self.assertIn("FromDropdown", app.app_config["profiles"])
+
+
+class TestConnectionStateMonitor(unittest.TestCase):
+    """Tests for _refresh_connection_state."""
+
+    def test_detects_dropped_connection(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.is_connecting = False
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+        app.status_var = MagicMock()
+        app.status_var.get.return_value = "Connected"  # was connected
+
+        app._refresh_connection_state(notify_on_drop=True)
+
+        app._set_connected_ui.assert_called_with(False)
+        log_messages = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("no longer active" in m for m in log_messages))
+
+    def test_no_false_alarm_when_disconnected(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.is_connecting = False
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+        app.status_var = MagicMock()
+        app.status_var.get.return_value = "Disconnected"
+
+        app._refresh_connection_state(notify_on_drop=False)
+
+        app._set_connected_ui.assert_called_with(False)
+        # Should NOT warn about dropped connection
+        log_messages = [c[0][0] for c in app.log.call_args_list]
+        self.assertFalse(any("no longer active" in m for m in log_messages))
 
 
 class TestHostHistory(unittest.TestCase):
@@ -1171,6 +1406,10 @@ class TestCommandHistoryIntegration(unittest.TestCase):
         # Running a duplicate should move it to front
         app.run_ssh_command("cmd_a")
         self.assertEqual(app.command_history[0], "cmd_a")
+
+        # Verify no duplicate entries remain
+        self.assertEqual(app.command_history.count("cmd_a"), 1,
+            "Duplicate command should be removed from its old position")
 
     @patch('SSH_DeviceManager.threading.Thread')
     def test_history_limit(self, mock_thread):

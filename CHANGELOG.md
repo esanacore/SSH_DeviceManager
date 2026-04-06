@@ -39,9 +39,14 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - Config file round-trip (save to disk ? reload ? data intact).
     - Host history capped at 10 entries.
     - Disconnect credential clearing (enabled/disabled).
+- **Unit Test Expansion** (18 new):
+    - SSHManager: stderr capture, host key policy per mode, upload-not-connected guard, SFTP session reuse.
+    - SSHGuiApp: save-empty guard, save-write-error handling, clear output, double-click connect guard, run-command-not-connected, upload-not-connected, upload-cancelled, log timestamp format.
+    - Profiles: load-missing-profile error, save-via-dropdown-name fallback.
+    - Connection State Monitor: detect dropped connection, no false alarm when disconnected.
 - **Test Documentation**:
     - `docs/TEST_MATRIX.md`: Test IDs, descriptions, requirements traceability matrix (40+ requirements).
-    - `docs/TEST_GHERKIN.md`: 74 Gherkin behavioral specifications (Given/When/Then).
+    - `docs/TEST_GHERKIN.md`: 92 Gherkin behavioral specifications (Given/When/Then).
     - `docs/READING_GUIDE.md`: Guide to reading the test documentation.
 - **Themes**:
     - Added "Cyberpunk" theme (Electric Blue, Bright Pink, Bright Yellow).
@@ -52,9 +57,10 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 - **Architecture**: Single-file monolith ? modular package with 8 modules.
 - **Theme System**: Updated apply_theme to style buttons, borders, separators, checkbuttons, spinboxes.
 - **Security Default**: Host key policy changed from AutoAddPolicy to WarningPolicy.
-- **Test Count**: 19 ? 74 tests (58 unit + 16 integration).
+- **Test Count**: 19 → 92 tests (76 unit + 16 integration).
 
 ### Fixed
+- **Command History Dedup Bug**: `run_ssh_command` could insert duplicate entries when re-running a command already deeper in the history list. Fixed to remove-then-insert.
 - Restored missing `import json` and `from tkinter import filedialog, messagebox, ttk` imports that were accidentally dropped.
 - Fixed Dark Mode text_fg key typo (textFg ? text_fg).
 

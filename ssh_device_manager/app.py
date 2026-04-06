@@ -703,10 +703,11 @@ class SSHGuiApp(tk.Tk):
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
             return
 
-        if command not in self.command_history or self.command_history[0] != command:
-            self.command_history.insert(0, command)
-            if len(self.command_history) > COMMAND_HISTORY_LIMIT:
-                self.command_history.pop()
+        if command in self.command_history:
+            self.command_history.remove(command)
+        self.command_history.insert(0, command)
+        if len(self.command_history) > COMMAND_HISTORY_LIMIT:
+            self.command_history.pop()
 
         self.history_index = 0
         self.log(f"\n$ {command}")

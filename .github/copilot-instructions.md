@@ -20,7 +20,7 @@ ssh_device_manager/          # Main package
     app.py                   # SSHGuiApp (Tkinter orchestrator)
 
 SSH_DeviceManager.py         # Thin launcher / backward-compat shim
-test_SSH_DeviceManager.py    # 74 unit + integration tests
+test_SSH_DeviceManager.py    # 92 unit + integration tests
 customizer.py                # Standalone sections.json editor
 docs/                        # Test matrix, Gherkin specs, reading guide
 ```
@@ -64,11 +64,11 @@ The host field uses `ttk.Combobox` with a special `<Clear History>` option. Hist
 ```powershell
 python -m unittest test_SSH_DeviceManager.py
 ```
-Tests use `unittest.mock` to mock `paramiko`, `tkinter`, and file dialogs. Tkinter is mocked at import time in the test file. All 74 tests (58 unit + 16 integration) run in under 1 second.
+Tests use `unittest.mock` to mock `paramiko`, `tkinter`, and file dialogs. Tkinter is mocked at import time in the test file. All 92 tests (76 unit + 16 integration) run in under 1 second.
 
 ### Adding a New Button
 1. In `_define_sections()` in `app.py`, add an `ActionButton` to the appropriate `ButtonSection`
-2. Or add to `sections.json` — the app auto-reloads on file changes
+2. Or add to `sections.json` ï¿½ the app auto-reloads on file changes
 3. Set `enabled=True` and provide a handler function
 4. If max_buttons is exceeded, excess buttons are truncated with a warning logged
 
@@ -117,7 +117,7 @@ Tests mock external dependencies (Paramiko, Tkinter, file dialogs) to avoid side
 - `ssh_device_manager/sections_loader.py`: JSON section loading
 - `ssh_device_manager/output.py`: Output manager
 - `SSH_DeviceManager.py`: Thin launcher / backward-compat shim
-- `test_SSH_DeviceManager.py`: 74 unit + integration tests
+- `test_SSH_DeviceManager.py`: 92 unit + integration tests
 - `docs/TEST_MATRIX.md`: Test IDs, descriptions, requirements traceability
 - `docs/TEST_GHERKIN.md`: Gherkin behavioral specifications
 - `docs/READING_GUIDE.md`: How to navigate the test documentation

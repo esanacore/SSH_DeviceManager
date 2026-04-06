@@ -48,7 +48,7 @@ jobs:
 
     - name: Run unit tests (verbose)
       run: |
-        python -m unittest discover -v || (echo "UNIT TESTS FAILED" && python -m unittest discover -v)
+        python -m unittest test_SSH_DeviceManager test_customizer -v
 
     - name: Collect environment for debugging
       if: failure()

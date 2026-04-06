@@ -223,3 +223,6 @@ class TestCustomizerApp(unittest.TestCase):
         handle = mock_open()
         written = "".join(call.args[0] for call in handle.write.mock_calls)
         self.assertIn("SaveMe", written)
+
+if __name__ == '__main__':
+    unittest.main()

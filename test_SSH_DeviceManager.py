@@ -152,6 +152,14 @@ sys.modules['tkinter.ttk'] = ttk
 sys.modules['tkinter.messagebox'] = messagebox
 sys.modules['tkinter.filedialog'] = filedialog
 
+# Clear any ssh_device_manager modules that test discovery may have pre-imported
+# with the real tkinter (before our mock was set up). This forces a fresh import
+# of SSHGuiApp so it inherits from our DummyTkBase mock, not the real tkinter.Tk.
+for _key in list(sys.modules.keys()):
+    if _key == 'ssh_device_manager' or _key.startswith('ssh_device_manager.') \
+            or _key == 'SSH_DeviceManager':
+        del sys.modules[_key]
+
 import SSH_DeviceManager
 
 class TestShimExports(unittest.TestCase):

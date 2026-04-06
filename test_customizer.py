@@ -16,6 +16,8 @@ simpledialog = types.ModuleType('tkinter.simpledialog')
 filedialog = types.ModuleType('tkinter.filedialog')
 
 class DummyWidget(MagicMock):
+    def __init__(self, *a, **k):
+        super().__init__()
     def pack(self, *a, **k): pass
     def grid(self, *a, **k): pass
     def bind(self, *a, **k): pass
@@ -49,6 +51,14 @@ sys.modules['tkinter.ttk'] = ttk
 sys.modules['tkinter.messagebox'] = messagebox
 sys.modules['tkinter.simpledialog'] = simpledialog
 sys.modules['tkinter.filedialog'] = filedialog
+
+filedialog.askopenfilename = MagicMock(return_value='')
+filedialog.asksaveasfilename = MagicMock(return_value='')
+messagebox.showinfo = MagicMock()
+messagebox.showwarning = MagicMock()
+messagebox.showerror = MagicMock()
+messagebox.askyesno = MagicMock(return_value=False)
+simpledialog.askstring = MagicMock(return_value=None)
 
 # Now we can safely import the customizer app
 import customizer
@@ -212,6 +222,7 @@ class TestCustomizerApp(unittest.TestCase):
     def test_save_config(self, mock_open, mock_asksaveasfilename):
         """Tests writing the configuration data to a user-selected file."""
         app = customizer.CustomizerApp()
+        mock_open.reset_mock()  # ignore the open() call made by load_config during __init__
         app.config_data = {"sections": [{"title": "SaveMe"}]}
         
         app.save_config()

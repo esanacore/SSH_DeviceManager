@@ -10,17 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Opt into Node.js 24 for JS actions to avoid Node.js 20 deprecation warnings
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
     strategy:
       matrix:
         # Include 3.11 and 3.12; keep a narrower set to stabilize while diagnosing
         python-version: ['3.11', '3.12']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Show runner info
       run: |
@@ -30,7 +26,7 @@ jobs:
         pyenv versions || true
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 

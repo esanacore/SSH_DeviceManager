@@ -15,7 +15,19 @@ messagebox = types.ModuleType('tkinter.messagebox')
 simpledialog = types.ModuleType('tkinter.simpledialog')
 filedialog = types.ModuleType('tkinter.filedialog')
 
+# Pre-populate attributes so @patch doesn't throw AttributeError
+messagebox.showinfo = lambda *a, **k: None
+messagebox.showwarning = lambda *a, **k: None
+messagebox.askyesno = lambda *a, **k: False
+simpledialog.askstring = lambda *a, **k: ""
+filedialog.askopenfilename = lambda *a, **k: ""
+filedialog.asksaveasfilename = lambda *a, **k: ""
+
 class DummyWidget(MagicMock):
+    def __init__(self, *args, **kwargs):
+        # Swallow args to prevent them from being interpreted as a 'spec' by MagicMock
+        super().__init__()
+        
     def pack(self, *a, **k): pass
     def grid(self, *a, **k): pass
     def bind(self, *a, **k): pass

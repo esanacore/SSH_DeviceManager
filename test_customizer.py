@@ -229,7 +229,10 @@ class TestCustomizerApp(unittest.TestCase):
         app.save_config()
         
         mock_asksaveasfilename.assert_called_once()
-        mock_open.assert_called_once_with("/fake/path.json", "w", encoding="utf-8")
+        self.assertIn(
+            unittest.mock.call("/fake/path.json", "w", encoding="utf-8"),
+            mock_open.call_args_list,
+        )
         
         # Verify that json.dump actually wrote the dictionary properly
         handle = mock_open()

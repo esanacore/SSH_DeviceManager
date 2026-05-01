@@ -18,10 +18,10 @@ from ssh_device_manager import (           # noqa: F401
     APP_CONFIG_FILE,
     DEFAULT_SECTIONS_FILE,
 )
+from ssh_device_manager.paramiko_compat import paramiko  # noqa: F401
 
 # Re-export stdlib / third-party names that tests and external code reference
 # through this module (e.g. ``SSH_DeviceManager.paramiko``).
-import paramiko          # noqa: F401
 import threading         # noqa: F401
 from tkinter import filedialog, messagebox  # noqa: F401
 

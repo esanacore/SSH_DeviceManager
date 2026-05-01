@@ -5,7 +5,7 @@ SSH Manager - Wraps Paramiko for SSH connections, command execution, and file tr
 from contextlib import suppress
 from typing import Optional
 
-import paramiko
+from .paramiko_compat import paramiko
 
 
 class SSHManager:

@@ -5,6 +5,10 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Controller Layer Refactor**:
+    - Added `ssh_device_manager/controllers/` with focused controllers for connection lifecycle, SSH actions/uploads, profile CRUD, and sections loading/rendering/watching.
+    - Added `constants.py` to centralize shared app constants.
+    - Added `paramiko_compat.py` so the app and tests can import cleanly even when `paramiko` is not installed in the active interpreter.
 - **Modular Package Architecture**:
     - Refactored 1,763-line monolith into `ssh_device_manager/` package with 8 focused modules.
     - `models.py`: ActionButton, ButtonSection, ToolTip data models.
@@ -54,12 +58,20 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - Added btn_bg, border, label_fg keys to all themes for proper layering.
 
 ### Changed
+- **App Composition**:
+    - Reduced `SSHGuiApp` so it acts primarily as the Tkinter composition root and delegates major behaviors to controllers.
+    - Kept the existing public `SSHGuiApp` methods and the top-level `SSH_DeviceManager.py` shim stable for backward compatibility and test compatibility.
+- **Test Harness Compatibility**:
+    - Updated imports so the launcher shim and package use the same `paramiko` compatibility path.
+    - Relaxed a brittle `customizer` save test that incorrectly assumed app initialization performed no file reads.
 - **Architecture**: Single-file monolith ? modular package with 8 modules.
 - **Theme System**: Updated apply_theme to style buttons, borders, separators, checkbuttons, spinboxes.
 - **Security Default**: Host key policy changed from AutoAddPolicy to WarningPolicy.
 - **Test Count**: 19 → 92 tests (76 unit + 16 integration).
 
 ### Fixed
+- **Refactor Safety**:
+    - Verified the full local suite after the controller extraction and compatibility changes: 105 tests passing (`test_SSH_DeviceManager.py` and `test_customizer.py`).
 - **Command History Dedup Bug**: `run_ssh_command` could insert duplicate entries when re-running a command already deeper in the history list. Fixed to remove-then-insert.
 - Restored missing `import json` and `from tkinter import filedialog, messagebox, ttk` imports that were accidentally dropped.
 - Fixed Dark Mode text_fg key typo (textFg ? text_fg).

@@ -15,6 +15,14 @@ messagebox = types.ModuleType('tkinter.messagebox')
 simpledialog = types.ModuleType('tkinter.simpledialog')
 filedialog = types.ModuleType('tkinter.filedialog')
 
+# Pre-populate attributes so @patch doesn't throw AttributeError
+messagebox.showinfo = lambda *a, **k: None
+messagebox.showwarning = lambda *a, **k: None
+messagebox.askyesno = lambda *a, **k: False
+simpledialog.askstring = lambda *a, **k: ""
+filedialog.askopenfilename = lambda *a, **k: ""
+filedialog.asksaveasfilename = lambda *a, **k: ""
+
 class DummyWidget(MagicMock):
     def __init__(self, *a, **k):
         # Ignore positional args so they are not passed to MagicMock.__init__ as
@@ -231,7 +239,10 @@ class TestCustomizerApp(unittest.TestCase):
         app.save_config()
         
         mock_asksaveasfilename.assert_called_once()
-        mock_open.assert_called_once_with("/fake/path.json", "w", encoding="utf-8")
+        self.assertIn(
+            unittest.mock.call("/fake/path.json", "w", encoding="utf-8"),
+            mock_open.call_args_list,
+        )
         
         # Verify that json.dump actually wrote the dictionary properly
         handle = mock_open()

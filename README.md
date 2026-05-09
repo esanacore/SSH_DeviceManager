@@ -125,11 +125,22 @@ Built-in themes: Default, Solarized Dark, Solarized Light, Dark Mode, Retro Term
 
 ## Tests
 
-Run all 100 unit and integration tests (mocks `tkinter`, `paramiko`):
+Run all unit and integration tests (mocks `tkinter`, `paramiko`):
 
 ```bash
 python -m unittest test_SSH_DeviceManager.py -v
 ```
+
+## Linting
+
+Run repository lint checks with the same command used in CI:
+
+```bash
+pylint $(git ls-files '*.py')
+```
+
+Pylint behavior is configured via `.pylintrc` to keep checks practical for
+this Tkinter-heavy application and the current test architecture.
 
 Test documentation:
 - `docs/TEST_MATRIX.md` � Test IDs, descriptions, and requirements traceability matrix

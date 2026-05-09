@@ -79,6 +79,11 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 - **Test Count**: 19 → 100 tests (84 unit + 16 integration).
 
 ### Fixed
+- **Pylint CI Stability**:
+    - Fixed `E0602` in `ssh_device_manager/app.py` by importing `queue` where `queue.Queue()` is used.
+    - Updated `SSH_DeviceManager.py` launcher lint issues (split imports, added `main()` docstring, and exception chaining with `raise SystemExit(1) from exc`).
+    - Replaced direct protected-call usage in `app.py` output helper with a public `OutputManager.append()` wrapper.
+    - Added repository `.pylintrc` so `pylint $(git ls-files '*.py')` passes in CI without broad architectural refactors.
 - **Refactor Safety**:
     - Verified the full local suite after the controller extraction and compatibility changes: 105 tests passing (`test_SSH_DeviceManager.py` and `test_customizer.py`).
 - **Command History Dedup Bug**: `run_ssh_command` could insert duplicate entries when re-running a command already deeper in the history list. Fixed to remove-then-insert.

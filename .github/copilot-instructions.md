@@ -12,15 +12,22 @@ ssh_device_manager/          # Main package
     __init__.py              # Re-exports public API
     models.py                # ActionButton, ButtonSection, ToolTip
     ssh_manager.py           # SSHManager (Paramiko wrapper)
-    themes.py                # THEMES dictionary
+    themes.py                # THEMES dictionary (18 built-in themes)
     config.py                # App config / profile persistence
+    constants.py             # Shared app constants (limits, file paths)
+    paramiko_compat.py       # Clean import when paramiko is absent
     sections_loader.py       # JSON section loading + handler resolution
     validation.py            # Input validation helpers
     output.py                # OutputManager (log queue, append, clear, copy, save)
     app.py                   # SSHGuiApp (Tkinter orchestrator)
+    controllers/             # Focused controllers
+        connection.py        # Connection lifecycle
+        actions.py           # SSH actions and file uploads
+        profiles.py          # Profile CRUD
+        sections.py          # Section loading, rendering, file watching
 
 SSH_DeviceManager.py         # Thin launcher / backward-compat shim
-test_SSH_DeviceManager.py    # 92 unit + integration tests
+test_SSH_DeviceManager.py    # 100 unit + integration tests
 customizer.py                # Standalone sections.json editor
 docs/                        # Test matrix, Gherkin specs, reading guide
 ```
@@ -31,12 +38,15 @@ docs/                        # Test matrix, Gherkin specs, reading guide
 |---|---|---|
 | `models.py` | UI data structures | `ActionButton`, `ButtonSection`, `ToolTip` |
 | `ssh_manager.py` | SSH/SFTP via Paramiko | `SSHManager` |
-| `themes.py` | Color theme definitions | `THEMES` dict |
+| `themes.py` | Color theme definitions (18 themes) | `THEMES` dict |
 | `config.py` | Profile persistence to JSON | `load_app_config()`, `save_app_config()` |
+| `constants.py` | Shared app constants | `COMMAND_HISTORY_LIMIT`, `APP_CONFIG_FILE`, `DEFAULT_SECTIONS_FILE` |
+| `paramiko_compat.py` | Safe paramiko import | `paramiko` (real or stub) |
 | `sections_loader.py` | Button definitions from JSON | `load_sections_from_file()` |
 | `validation.py` | Connection form validation | `get_connection_inputs()`, `parse_int_input()`, `get_host_key_mode()` |
 | `output.py` | Thread-safe terminal output | `OutputManager` |
 | `app.py` | Tkinter GUI orchestrator | `SSHGuiApp` |
+| `controllers/` | Delegated app behaviors | `ConnectionController`, `ActionsController`, `ProfilesController`, `SectionsController` |
 
 ## Critical Architecture Patterns
 
@@ -64,7 +74,7 @@ The host field uses `ttk.Combobox` with a special `<Clear History>` option. Hist
 ```powershell
 python -m unittest test_SSH_DeviceManager.py
 ```
-Tests use `unittest.mock` to mock `paramiko`, `tkinter`, and file dialogs. Tkinter is mocked at import time in the test file. All 92 tests (76 unit + 16 integration) run in under 1 second.
+Tests use `unittest.mock` to mock `paramiko`, `tkinter`, and file dialogs. Tkinter is mocked at import time in the test file. All 100 tests (84 unit + 16 integration) run in under 1 second.
 
 ### Adding a New Button
 1. In `_define_sections()` in `app.py`, add an `ActionButton` to the appropriate `ButtonSection`
@@ -117,7 +127,7 @@ Tests mock external dependencies (Paramiko, Tkinter, file dialogs) to avoid side
 - `ssh_device_manager/sections_loader.py`: JSON section loading
 - `ssh_device_manager/output.py`: Output manager
 - `SSH_DeviceManager.py`: Thin launcher / backward-compat shim
-- `test_SSH_DeviceManager.py`: 92 unit + integration tests
+- `test_SSH_DeviceManager.py`: 100 unit + integration tests
 - `docs/TEST_MATRIX.md`: Test IDs, descriptions, requirements traceability
 - `docs/TEST_GHERKIN.md`: Gherkin behavioral specifications
 - `docs/READING_GUIDE.md`: How to navigate the test documentation

@@ -2,8 +2,8 @@
 # SSH Device Manager - Test Specifications (Gherkin)
 
 > **Test File:** `test_SSH_DeviceManager.py`
-> **Total Scenarios:** 92
-> **Last Updated:** 2026-04-05
+> **Total Scenarios:** 100
+> **Last Updated:** 2026-05-09
 > **Format:** Gherkin (Given/When/Then) for requirements traceability
 
 ---
@@ -32,6 +32,8 @@
 20. [Host History Limit](#feature-host-history-limit)
 21. [Disconnect Credential Clearing](#feature-disconnect-credential-clearing)
 22. [Connection State Monitor](#feature-connection-state-monitor)
+23. [Startup Error Logging](#feature-startup-error-logging)
+24. [Contracts](#feature-contracts)
 
 ---
 
@@ -945,4 +947,74 @@ Feature: Connection State Monitor
     When the connection state monitor checks
     Then the UI state does not change
     And no spurious log messages are generated
+```
+
+---
+
+## Feature: Startup Error Logging
+
+```gherkin
+Feature: Startup Error Logging
+  The launcher writes a traceback to a log file when the app fails to start.
+
+  @unit @UT-SE-01
+  Scenario: Startup exception writes traceback to log file
+    Given SSHGuiApp raises RuntimeError("boom") during initialization
+    When the launcher's error handler catches the exception
+    Then a log file is written containing "RuntimeError"
+    And the log file contains "boom"
+```
+
+---
+
+## Feature: Contracts
+
+```gherkin
+Feature: Contracts
+  Contract tests verify the data shapes and interfaces exchanged between modules.
+
+  @unit @UT-CT-01
+  Scenario: All theme color values are valid hex or named colors
+    Given the THEMES dictionary
+    When I check every color value in every theme
+    Then each value matches #RRGGBB hex format or is a recognized named color
+
+  @unit @UT-CT-02
+  Scenario: Theme keys match apply_theme() usage
+    Given the THEMES dictionary and the apply_theme() method
+    When I compare the keys in each theme to the keys apply_theme() accesses
+    Then every required key is present
+    And no unexpected keys exist
+
+  @unit @UT-CT-03
+  Scenario: Shipped sections.json conforms to schema
+    Given the sections.json file in the project root
+    When I parse it as JSON
+    Then it has a "sections" array
+    And each section has "title" (string), "max_buttons" (integer), "actions" (array)
+    And each action has "label" (string), "enabled" (boolean), "command" (string)
+
+  @unit @UT-CT-04
+  Scenario: All sections.json commands are valid handler tokens
+    Given the sections.json file
+    When I check every action's "command" value
+    Then each is one of: "run:*", "__upload_template__", "__send_file__", "__custom_command__", or empty
+
+  @unit @UT-CT-05
+  Scenario: Profile config round-trip preserves schema
+    Given a profile with host, port, username, timeout, and host_key_mode
+    When I save it via save_app_config and reload via load_app_config
+    Then all keys are present with correct types (str, int, str, int, str)
+
+  @unit @UT-CT-06
+  Scenario: SSHManager exposes expected public interface
+    Given the SSHManager class
+    When I inspect its public methods
+    Then it has connect(host, port, username, password), disconnect(), run_command(command), upload_file(local_path, remote_path), and is_connected()
+
+  @unit @UT-CT-07
+  Scenario: Controller classes expose methods app.py delegates to
+    Given ConnectionController, ActionController, ProfileController, SectionsController
+    When I check each class for the methods app.py calls
+    Then every delegated method exists and is callable
 ```

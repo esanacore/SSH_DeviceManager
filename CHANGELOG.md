@@ -13,7 +13,7 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - Refactored 1,763-line monolith into `ssh_device_manager/` package with 8 focused modules.
     - `models.py`: ActionButton, ButtonSection, ToolTip data models.
     - `ssh_manager.py`: Paramiko wrapper (connect, disconnect, run_command, upload_file).
-    - `themes.py`: THEMES dictionary with 6 built-in themes.
+    - `themes.py`: THEMES dictionary with 18 built-in themes.
     - `config.py`: App config / profile persistence (load_app_config, save_app_config).
     - `sections_loader.py`: JSON section loading with handler token resolution.
     - `validation.py`: Connection form validation (get_connection_inputs, parse_int_input, get_host_key_mode).
@@ -56,6 +56,15 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - Added "Cyberpunk" theme (Electric Blue, Bright Pink, Bright Yellow).
     - Reworked Solarized Dark to use canonical palette (base03 bg, base02 surfaces, blue selection, base01 borders).
     - Added btn_bg, border, label_fg keys to all themes for proper layering.
+    - Added 12 new themes: Nord, Dracula, Gruvbox Dark, Gruvbox Light, Monokai Pro, One Dark, Tokyo Night, High Contrast, Catppuccin Mocha, Amber Terminal, NY Mets, NY Rangers.
+    - Total built-in themes expanded from 6 to 18.
+- **Startup Error Logging**:
+    - The launcher (`SSH_DeviceManager.py`) now catches unexpected startup exceptions and writes a full traceback to `ssh_device_manager_startup_error.log`, so non-terminal users can diagnose startup failures.
+- **Contract Tests** (7 new):
+    - Theme color values are valid hex (`CT-01`), theme keys match `apply_theme()` usage (`CT-02`).
+    - `sections.json` schema validation (`CT-03`) and command token validation (`CT-04`).
+    - Profile config round-trip schema (`CT-05`).
+    - `SSHManager` public interface contract (`CT-06`), controller interface contract (`CT-07`).
 
 ### Changed
 - **App Composition**:
@@ -67,7 +76,7 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 - **Architecture**: Single-file monolith ? modular package with 8 modules.
 - **Theme System**: Updated apply_theme to style buttons, borders, separators, checkbuttons, spinboxes.
 - **Security Default**: Host key policy changed from AutoAddPolicy to WarningPolicy.
-- **Test Count**: 19 → 92 tests (76 unit + 16 integration).
+- **Test Count**: 19 → 100 tests (84 unit + 16 integration).
 
 ### Fixed
 - **Refactor Safety**:

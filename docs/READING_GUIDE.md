@@ -21,7 +21,7 @@ docs/
 | **TEST_MATRIX.md** | Developers, QA leads, auditors | Lookup any test by ID, see exactly what it asserts, trace it back to a requirement |
 | **TEST_GHERKIN.md** | Product owners, QA, non-developers | Understand *what the app should do* in plain English without reading code |
 
-Both documents describe the **same 92 tests**. They are two views of the same
+Both documents describe the **same 100 tests**. They are two views of the same
 data � one structured for machines/databases, one structured for humans.
 
 ---
@@ -32,7 +32,7 @@ data � one structured for machines/databases, one structured for humans.
 
 ```
 > Test File: test_SSH_DeviceManager.py
-> Total Tests: 92 (76 unit + 16 integration)
+> Total Tests: 100 (84 unit + 16 integration)
 > Run Command: python -m unittest test_SSH_DeviceManager.py -v
 ```
 
@@ -59,7 +59,7 @@ How to read each column:
 | **Tests** | Number of `test_*` methods inside that class |
 | **Type** | **Unit** = tests one method in isolation; **Integration** = tests a multi-step flow |
 
-The **TOTAL** row at the bottom is your quick health check: 23 classes, 92 tests.
+The **TOTAL** row at the bottom is your quick health check: 25 classes, 100 tests.
 
 ### 1.3 Unit Test Detail Tables
 
@@ -134,6 +134,8 @@ Every test has a unique ID with a predictable structure:
 | HL | Host History Limit | `TestHostHistoryLimit` |
 | DC | Disconnect Credentials | `TestDisconnectClearsCredentials` |
 | CS | Connection State | `TestConnectionStateMonitor` |
+| SE | Startup Error Logging | `TestStartupErrorLogging` |
+| CT | Contracts | `TestContracts` |
 
 #### Example lookups
 
@@ -415,7 +417,7 @@ After editing, run this quick check:
 ```powershell
 # Count tests in code vs docs
 python -m unittest test_SSH_DeviceManager.py -v 2>&1 | Select-String "^Ran"
-# Should match the "Total Tests: 92" in both doc headers
+# Should match the "Total Tests: 100" in both doc headers
 ```
 
 ---

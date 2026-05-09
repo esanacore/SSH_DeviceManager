@@ -2,8 +2,8 @@
 # SSH Device Manager - Test Matrix
 
 > **Test File:** `test_SSH_DeviceManager.py`
-> **Total Tests:** 92 (76 unit + 16 integration)
-> **Last Updated:** 2026-04-05
+> **Total Tests:** 100 (84 unit + 16 integration)
+> **Last Updated:** 2026-05-09
 > **Run Command:** `python -m unittest test_SSH_DeviceManager.py -v`
 
 ---
@@ -24,6 +24,8 @@
    - [Profiles](#10-profiles)
    - [Host History](#11-host-history)
    - [Connection State Monitor](#12-connection-state-monitor)
+   - [Startup Error Logging](#13-startup-error-logging)
+   - [Contracts](#14-contracts)
 3. [Integration Tests](#integration-tests)
    - [Full Lifecycle](#13-connect--run--disconnect-lifecycle)
    - [Auth Failure Recovery](#14-auth-failure-recovery)
@@ -66,7 +68,9 @@
 | Config File I/O | `TestAppConfigRoundTrip` | 2 | Integration |
 | Host History Limit | `TestHostHistoryLimit` | 1 | Integration |
 | Credential Clearing | `TestDisconnectClearsCredentials` | 2 | Integration |
-| **TOTAL** | **23 classes** | **92** | |
+| Startup Error Logging | `TestStartupErrorLogging` | 1 | Unit |
+| Contracts | `TestContracts` | 7 | Unit |
+| **TOTAL** | **25 classes** | **100** | |
 
 ---
 
@@ -206,6 +210,24 @@
 | UT-CS-01 | `test_detects_dropped_connection` | SSH session drops while status was "Connected" | UI set to disconnected, log warns "no longer active" |
 | UT-CS-02 | `test_no_false_alarm_when_disconnected` | Status already "Disconnected", connection check runs | UI set to disconnected, NO spurious "no longer active" warning |
 
+### 13. Startup Error Logging
+
+| ID | Test Method | Description | Verifies |
+|---|---|---|---|
+| UT-SE-01 | `test_startup_error_writes_log_file` | SSHGuiApp raises RuntimeError at startup | Traceback written to log file, contains exception class and message |
+
+### 14. Contracts
+
+| ID | Test Method | Description | Verifies |
+|---|---|---|---|
+| UT-CT-01 | `test_theme_color_values_are_valid_hex` | All color values in all themes | Every value is `#RRGGBB` hex or a recognized named color |
+| UT-CT-02 | `test_theme_keys_match_apply_theme_usage` | Theme key sets vs apply_theme() | All keys used by apply_theme() exist; no unexpected keys present |
+| UT-CT-03 | `test_sections_json_conforms_to_schema` | Shipped sections.json structure | Has `sections[]` with `title` (str), `max_buttons` (int), `actions[]` with `label`, `enabled`, `command` |
+| UT-CT-04 | `test_sections_json_commands_are_valid_tokens` | Command values in sections.json | Every command is `run:*`, `__upload_template__`, `__send_file__`, `__custom_command__`, or empty |
+| UT-CT-05 | `test_profile_schema_round_trip` | Save/load profile via config.py | All expected keys (`host`, `port`, `username`, `timeout`, `host_key_mode`) present with correct types after round-trip |
+| UT-CT-06 | `test_ssh_manager_interface_contract` | SSHManager public API surface | Has `connect`, `disconnect`, `run_command`, `upload_file`, `is_connected` with expected required parameters |
+| UT-CT-07 | `test_controller_interface_contract` | Controller classes vs app.py delegation | Each controller exposes every method that app.py delegates to it |
+
 ---
 
 ## Integration Tests
@@ -338,3 +360,11 @@
 | REQ-LOG-01 | Thread-safe logging via queue | UT-APP-08 |
 | REQ-LOG-02 | Log messages include HH:MM:SS timestamp | UT-APP-17 |
 | REQ-PARSE-01 | Integer input parsing with range validation | UT-PI-01..06 |
+| REQ-START-01 | Startup errors logged to file for diagnostics | UT-SE-01 |
+| REQ-CT-01 | Theme color values are valid hex/named | UT-CT-01 |
+| REQ-CT-02 | Theme keys match apply_theme() usage | UT-CT-02 |
+| REQ-CT-03 | sections.json conforms to expected schema | UT-CT-03 |
+| REQ-CT-04 | sections.json commands use recognized tokens | UT-CT-04 |
+| REQ-CT-05 | Profile config round-trip preserves schema | UT-CT-05 |
+| REQ-CT-06 | SSHManager exposes expected public interface | UT-CT-06 |
+| REQ-CT-07 | Controller classes expose expected methods | UT-CT-07 |

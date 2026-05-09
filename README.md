@@ -9,15 +9,22 @@ ssh_device_manager/          # Main package
     __init__.py              # Re-exports public API
     models.py                # ActionButton, ButtonSection, ToolTip
     ssh_manager.py           # SSHManager (Paramiko wrapper)
-    themes.py                # THEMES dictionary
+    themes.py                # THEMES dictionary (18 built-in themes)
     config.py                # App config / profile persistence
+    constants.py             # Shared app constants (limits, file paths)
+    paramiko_compat.py       # Clean import when paramiko is absent
     sections_loader.py       # JSON section loading + handler resolution
     validation.py            # Input validation helpers
     output.py                # OutputManager (log queue, append, clear, copy, save)
     app.py                   # SSHGuiApp (Tkinter orchestrator)
+    controllers/             # Focused controllers
+        connection.py        # Connection lifecycle
+        actions.py           # SSH actions and file uploads
+        profiles.py          # Profile CRUD
+        sections.py          # Section loading, rendering, file watching
 
 SSH_DeviceManager.py         # Thin launcher / backward-compat shim
-test_SSH_DeviceManager.py    # 92 unit + integration tests
+test_SSH_DeviceManager.py    # 100 unit + integration tests
 customizer.py                # Standalone sections.json editor
 docs/                        # Test matrix, Gherkin specs, reading guide
 ```
@@ -34,7 +41,7 @@ docs/                        # Test matrix, Gherkin specs, reading guide
 - Modular UI driven by `sections.json` (JSON): sections, buttons, labels, enabled state, and commands.
 - `customizer.py`: visual editor to create/edit `sections.json` with a live preview.
 - Auto-reload: main app watches the active `sections.json` and reloads the Actions panel when the file changes.
-- Multiple built-in themes (Default, Solarized Dark/Light, Dark Mode, Retro Terminal, Cyberpunk) and easy theme additions.
+- 18 built-in themes (Default, Solarized Dark/Light, Dark Mode, Retro Terminal, Cyberpunk, Nord, Dracula, Gruvbox Dark/Light, Monokai Pro, One Dark, Tokyo Night, High Contrast, Catppuccin Mocha, Amber Terminal, NY Mets, NY Rangers) and easy theme additions.
 - Thread-safe logging shown in the Terminal Output pane, plus copy/save/clear options.
 - Host history combobox with `<Clear History>` option (last 10 connections).
 
@@ -102,7 +109,7 @@ Rules:
 
 Change theme via the `Theme` menu. Add new themes by editing the `THEMES` dictionary in `ssh_device_manager/themes.py`, then select via the Theme menu (auto-updates).
 
-Built-in themes: Default, Solarized Dark, Solarized Light, Dark Mode, Retro Terminal, Cyberpunk.
+Built-in themes: Default, Solarized Dark, Solarized Light, Dark Mode, Retro Terminal, Cyberpunk, Nord, Dracula, Gruvbox Dark, Gruvbox Light, Monokai Pro, One Dark, Tokyo Night, High Contrast, Catppuccin Mocha, Amber Terminal, NY Mets, NY Rangers.
 
 ## Security notes
 
@@ -118,7 +125,7 @@ Built-in themes: Default, Solarized Dark, Solarized Light, Dark Mode, Retro Term
 
 ## Tests
 
-Run all 92 unit and integration tests (mocks `tkinter`, `paramiko`):
+Run all 100 unit and integration tests (mocks `tkinter`, `paramiko`):
 
 ```bash
 python -m unittest test_SSH_DeviceManager.py -v

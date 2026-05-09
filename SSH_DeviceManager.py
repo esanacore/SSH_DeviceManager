@@ -30,4 +30,16 @@ def main():
     app.mainloop()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback, os
+        log_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "ssh_device_manager_startup_error.log",
+        )
+        with open(log_path, "w", encoding="utf-8") as f:
+            traceback.print_exc(file=f)
+        # Also print to stderr so terminal users still see it
+        traceback.print_exc()
+        raise SystemExit(1)

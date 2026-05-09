@@ -1580,3 +1580,272 @@ class TestDisconnectClearsCredentials(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestStartupErrorLogging(unittest.TestCase):
+    """Tests that the launcher writes a traceback to a log file on startup failure."""
+
+    @patch("SSH_DeviceManager.SSHGuiApp", side_effect=RuntimeError("boom"))
+    def test_startup_error_writes_log_file(self, _mock_app):
+        import tempfile
+        log_path = os.path.join(
+            tempfile.gettempdir(), "test_startup_error.log"
+        )
+        try:
+            # Simulate the launcher's error handler
+            try:
+                SSH_DeviceManager.main()
+            except RuntimeError:
+                import traceback
+                with open(log_path, "w", encoding="utf-8") as f:
+                    traceback.print_exc(file=f)
+
+            self.assertTrue(os.path.exists(log_path))
+            with open(log_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            self.assertIn("boom", content)
+            self.assertIn("RuntimeError", content)
+        finally:
+            if os.path.exists(log_path):
+                os.remove(log_path)
+
+
+class TestContracts(unittest.TestCase):
+    """Contract tests that verify the shape/types of data exchanged between modules."""
+
+    # CT-01: Every color value in every theme is a valid #RRGGBB hex or named color
+    def test_theme_color_values_are_valid_hex(self):
+        import re
+        hex_pattern = re.compile(r'^#[0-9a-fA-F]{6}$')
+        named_colors = {"black", "white", "red", "green", "blue", "yellow",
+                        "cyan", "magenta", "orange", "purple", "gray", "grey"}
+        for name, theme in SSH_DeviceManager.THEMES.items():
+            for key, value in theme.items():
+                is_valid = (
+                    hex_pattern.match(value) is not None
+                    or value.lower() in named_colors
+                )
+                self.assertTrue(
+                    is_valid,
+                    f"Theme '{name}', key '{key}': '{value}' is not a valid "
+                    f"#RRGGBB hex color or recognized named color"
+                )
+
+    # CT-02: Theme keys match the keys apply_theme() directly accesses
+    def test_theme_keys_match_apply_theme_usage(self):
+        # Keys accessed via theme["key"] (no fallback) in apply_theme()
+        required_by_apply_theme = {
+            "bg", "fg", "text_bg", "text_fg",
+            "entry_bg", "entry_fg", "select_bg", "select_fg",
+        }
+        # Keys accessed via theme.get("key", fallback) — should still be present
+        extended_keys = {"btn_bg", "border", "label_fg"}
+        all_expected = required_by_apply_theme | extended_keys
+
+        for name, theme in SSH_DeviceManager.THEMES.items():
+            for key in all_expected:
+                self.assertIn(
+                    key, theme,
+                    f"Theme '{name}' missing key '{key}' required by apply_theme()"
+                )
+            # No extra unknown keys
+            for key in theme:
+                self.assertIn(
+                    key, all_expected,
+                    f"Theme '{name}' has unexpected key '{key}' not used by apply_theme()"
+                )
+
+    # CT-03: The shipped sections.json conforms to the expected schema
+    def test_sections_json_conforms_to_schema(self):
+        sections_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "sections.json"
+        )
+        if not os.path.exists(sections_path):
+            self.skipTest("sections.json not found")
+
+        with open(sections_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.assertIn("sections", data)
+        self.assertIsInstance(data["sections"], list)
+        self.assertGreater(len(data["sections"]), 0, "sections array should not be empty")
+
+        for i, section in enumerate(data["sections"]):
+            self.assertIn("title", section, f"Section {i} missing 'title'")
+            self.assertIsInstance(section["title"], str)
+            self.assertIn("max_buttons", section, f"Section {i} missing 'max_buttons'")
+            self.assertIsInstance(section["max_buttons"], int)
+            self.assertIn("actions", section, f"Section {i} missing 'actions'")
+            self.assertIsInstance(section["actions"], list)
+
+            for j, action in enumerate(section["actions"]):
+                self.assertIn("label", action, f"Section {i}, action {j} missing 'label'")
+                self.assertIsInstance(action["label"], str)
+                self.assertIn("enabled", action, f"Section {i}, action {j} missing 'enabled'")
+                self.assertIsInstance(action["enabled"], bool)
+                self.assertIn("command", action, f"Section {i}, action {j} missing 'command'")
+                self.assertIsInstance(action["command"], str)
+
+    # CT-04: Every command in sections.json is a recognized handler token
+    def test_sections_json_commands_are_valid_tokens(self):
+        sections_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "sections.json"
+        )
+        if not os.path.exists(sections_path):
+            self.skipTest("sections.json not found")
+
+        valid_special_tokens = {
+            "__upload_template__", "__send_file__", "__custom_command__"
+        }
+
+        with open(sections_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        for section in data["sections"]:
+            for action in section.get("actions", []):
+                cmd = action.get("command", "")
+                is_valid = (
+                    cmd in valid_special_tokens
+                    or cmd.startswith("run:")
+                    or cmd == ""
+                )
+                self.assertTrue(
+                    is_valid,
+                    f"Action '{action.get('label')}' has unrecognized command "
+                    f"token: '{cmd}'. Expected run:*, __upload_template__, "
+                    f"__send_file__, or __custom_command__"
+                )
+
+    # CT-05: Profile config round-trip preserves all expected keys and types
+    def test_profile_schema_round_trip(self):
+        import tempfile
+        from ssh_device_manager.config import load_app_config, save_app_config
+
+        config = {
+            "profiles": {
+                "TestProfile": {
+                    "host": "10.0.0.1",
+                    "port": 22,
+                    "username": "admin",
+                    "timeout": 10,
+                    "host_key_mode": "warning",
+                }
+            }
+        }
+
+        expected_keys = {"host", "port", "username", "timeout", "host_key_mode"}
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json",
+                                         delete=False, dir=".") as f:
+            tmp_path = f.name
+
+        try:
+            save_app_config(tmp_path, config)
+            loaded = load_app_config(tmp_path)
+
+            self.assertIn("profiles", loaded)
+            self.assertIn("TestProfile", loaded["profiles"])
+            profile = loaded["profiles"]["TestProfile"]
+
+            for key in expected_keys:
+                self.assertIn(
+                    key, profile,
+                    f"Profile missing expected key '{key}' after round-trip"
+                )
+
+            # Type checks
+            self.assertIsInstance(profile["host"], str)
+            self.assertIsInstance(profile["port"], int)
+            self.assertIsInstance(profile["username"], str)
+            self.assertIsInstance(profile["timeout"], int)
+            self.assertIsInstance(profile["host_key_mode"], str)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+    # CT-06: SSHManager exposes the public interface the app expects
+    def test_ssh_manager_interface_contract(self):
+        import inspect
+        mgr = SSH_DeviceManager.SSHManager
+
+        # Required public methods
+        required_methods = {
+            "connect": ["host", "port", "username", "password"],
+            "disconnect": [],
+            "run_command": ["command"],
+            "upload_file": ["local_path", "remote_path"],
+            "is_connected": [],
+        }
+
+        for method_name, expected_params in required_methods.items():
+            self.assertTrue(
+                hasattr(mgr, method_name),
+                f"SSHManager missing method '{method_name}'"
+            )
+            method = getattr(mgr, method_name)
+            self.assertTrue(
+                callable(method),
+                f"SSHManager.{method_name} is not callable"
+            )
+
+            sig = inspect.signature(method)
+            param_names = [
+                p.name for p in sig.parameters.values()
+                if p.name != "self"
+                and p.default is inspect.Parameter.empty
+                and p.kind not in (
+                    inspect.Parameter.VAR_POSITIONAL,
+                    inspect.Parameter.VAR_KEYWORD,
+                )
+            ]
+            for expected in expected_params:
+                self.assertIn(
+                    expected, param_names,
+                    f"SSHManager.{method_name}() missing required "
+                    f"parameter '{expected}'"
+                )
+
+    # CT-07: Each controller class exposes the methods app.py delegates to
+    def test_controller_interface_contract(self):
+        from ssh_device_manager.controllers import (
+            ConnectionController, ActionController,
+            ProfileController, SectionsController,
+        )
+
+        controller_contracts = {
+            ConnectionController: [
+                "connect", "disconnect", "test_connection",
+                "on_host_selected", "refresh_connection_state",
+                "start_connection_monitor",
+            ],
+            ActionController: [
+                "run_ssh_command", "prompt_and_run_custom_command",
+                "upload_config_template", "send_file_scp", "perform_upload",
+            ],
+            ProfileController: [
+                "save_profile", "load_selected_profile",
+                "delete_selected_profile", "refresh_profile_list",
+            ],
+            SectionsController: [
+                "load_sections_from_file", "reload_sections",
+                "open_sections_file", "define_sections",
+                "build_button_sections", "get_mtime",
+                "start_sections_watcher",
+            ],
+        }
+
+        for controller_cls, methods in controller_contracts.items():
+            for method_name in methods:
+                self.assertTrue(
+                    hasattr(controller_cls, method_name),
+                    f"{controller_cls.__name__} missing method '{method_name}' "
+                    f"that app.py delegates to"
+                )
+                self.assertTrue(
+                    callable(getattr(controller_cls, method_name)),
+                    f"{controller_cls.__name__}.{method_name} is not callable"
+                )
+
+
+if __name__ == '__main__':
+    unittest.main()

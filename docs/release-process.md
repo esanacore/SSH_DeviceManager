@@ -1,13 +1,23 @@
 # Release Process
 
-This project uses a simple semi-automated release process.
+This document explains how this project creates software releases using GitHub Actions.
 
-The goal is to let GitHub Actions suggest a version change, but keep the final release decision human-approved.
+It is intentionally detailed so that someone can come back months or years later and understand:
 
-## Version Format
+- what the release workflows do
+- when to use each workflow
+- how version numbers are chosen
+- how to decide between major, minor, patch, or no release
+- how to troubleshoot common problems
 
-Releases use semantic versioning:
+The goal is not to make releases fully automatic. The goal is to make releases easier, more consistent, and less error-prone while still keeping the final decision human-approved.
+
+---
+
+# 1. Plain-English Summary
+
+This project uses two GitHub Actions workflows:
 
 ```text
-vMAJOR.MINOR.PATCH
-```
+1 - Suggest Release Version
+2 - Create Release

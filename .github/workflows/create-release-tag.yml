@@ -1,50 +1,66 @@
-# .github/workflows/create-release-tag.yml
-name: Create Release Tag
+# .github/workflows/2-create-release.yml
+#
+# PURPOSE:
+#   This workflow creates the actual GitHub release and Git tag.
+#
+# WHEN TO RUN:
+#   Run this manually after merging a PR.
+#
+# HOW TO RUN:
+#   GitHub repo -> Actions -> 2 - Create Release -> Run workflow
+#
+# WHAT TO ENTER:
+#   bump_type:
+#     major = breaking change
+#     minor = new feature
+#     patch = bug fix / small update
+#
+# EXAMPLE:
+#   Current version: v1.4.2
+#   bump_type: minor
+#   New release: v1.5.0
+
+name: 2 - Create Release
 
 on:
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "What type of release should this be?"
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+      release_notes:
+        description: "Short release notes, usually the merged PR title or summary."
+        required: true
+        type: string
 
 permissions:
   contents: write
-  pull-requests: read
-  issues: read
 
 jobs:
   create-release:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Create release tag
+      - name: Create GitHub release and tag
         uses: actions/github-script@v8
         with:
           script: |
             const { owner, repo } = context.repo;
-            const pr = context.payload.pull_request;
-            const labels = pr.labels.map(label => label.name);
 
-            let bump = null;
+            const bumpType = "${{ inputs.bump_type }}";
+            const releaseNotes = `${{ inputs.release_notes }}`;
 
-            if (labels.includes("release:major")) {
-              bump = "major";
-            } else if (labels.includes("release:minor")) {
-              bump = "minor";
-            } else if (labels.includes("release:patch")) {
-              bump = "patch";
-            } else if (labels.includes("release:none")) {
-              core.notice("release:none label found. Skipping release.");
-              return;
-            } else {
-              core.setFailed("No release label found. Add release:major, release:minor, release:patch, or release:none.");
-              return;
-            }
-
+            // ------------------------------------------------------------
+            // STEP 1: Find the latest GitHub release.
+            // Example: v1.4.2
+            // If no release exists yet, start from v0.0.0.
+            // ------------------------------------------------------------
             let currentVersion = "v0.0.0";
 
             try {
@@ -58,9 +74,14 @@ jobs:
               core.notice("No existing release found. Starting from v0.0.0.");
             }
 
+            // ------------------------------------------------------------
+            // STEP 2: Calculate the next version.
+            // ------------------------------------------------------------
             function bumpVersion(version, bump) {
-              const clean = version.replace(/^v/, "");
-              const [major, minor, patch] = clean.split(".").map(Number);
+              const cleanVersion = version.replace(/^v/, "");
+              const [major, minor, patch] = cleanVersion
+                .split(".")
+                .map(Number);
 
               if (bump === "major") {
                 return `v${major + 1}.0.0`;
@@ -73,15 +94,20 @@ jobs:
               return `v${major}.${minor}.${patch + 1}`;
             }
 
-            const nextVersion = bumpVersion(currentVersion, bump);
+            const nextVersion = bumpVersion(currentVersion, bumpType);
 
+            // ------------------------------------------------------------
+            // STEP 3: Create the GitHub release.
+            //
+            // GitHub automatically creates the Git tag if it does not
+            // already exist.
+            // ------------------------------------------------------------
             await github.rest.repos.createRelease({
               owner,
               repo,
               tag_name: nextVersion,
-              target_commitish: pr.merge_commit_sha,
               name: nextVersion,
-              body: `Release ${nextVersion} created from PR #${pr.number}: ${pr.title}`,
+              body: releaseNotes,
               draft: false,
               prerelease: false
             });

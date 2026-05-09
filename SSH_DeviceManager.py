@@ -7,9 +7,9 @@ This file re-exports every public name so that existing imports like
 """
 
 import os
-import threading  # noqa: F401
+import threading  # noqa: F401  # Re-exported for backward compatibility
 import traceback
-from tkinter import filedialog, messagebox  # noqa: F401
+from tkinter import filedialog, messagebox  # noqa: F401  # Re-exported names
 
 # Re-export public API from the package
 from ssh_device_manager import (           # noqa: F401

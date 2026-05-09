@@ -12,7 +12,12 @@ from typing import Callable, List
 
 class ActionButton:
     """
-    Represents one button/action in the UI.
+    Represents one action rendered as a button in an Actions section.
+
+    The handler is already resolved to a callable by the sections loader or the
+    fallback section builder, so rendering code does not need to know whether an
+    action came from JSON or from built-in defaults.
+
     - label: text on the button
     - enabled: whether it should appear / be clickable
     - handler: function called when clicked

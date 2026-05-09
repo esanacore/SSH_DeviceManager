@@ -1,8 +1,14 @@
-"""Compatibility import for environments without paramiko installed."""
+"""Compatibility import for environments without paramiko installed.
+
+Tests and non-SSH workflows can import the package without Paramiko. Actual SSH
+operations still fail with clear errors until the dependency is installed.
+"""
 
 try:
     import paramiko as _paramiko
 except ModuleNotFoundError:
+    # Mirror the small subset of Paramiko symbols the app imports so modules can
+    # load in test environments that do not install optional SSH dependencies.
     class _MissingHostKeyPolicy:
         pass
 

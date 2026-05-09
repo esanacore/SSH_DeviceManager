@@ -20,16 +20,18 @@ def load_sections_from_file(
     fallback: Callable[[], List[ButtonSection]],
 ) -> List[ButtonSection]:
     """
-    Loads section/button definitions from a JSON file.
+    Load section/button definitions from a JSON file.
 
     Handler callbacks are injected so this module has no dependency on the app class.
     Returns *fallback()* on any error.
     """
 
     def resolve_handler(cmd: str) -> Callable[[], None]:
+        """Map JSON command tokens to callables the Tk button can invoke."""
         if not cmd:
             return lambda: log("[WARN] No command assigned to this button.")
 
+        # These reserved tokens call UI flows instead of raw SSH commands.
         if cmd == "__upload_template__":
             return upload_config_template
         if cmd == "__send_file__":

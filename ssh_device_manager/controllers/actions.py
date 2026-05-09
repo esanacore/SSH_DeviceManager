@@ -28,6 +28,7 @@ class ActionController:
         self.app.history_index = 0
         self.app.log(f"\n$ {command}")
 
+        # Paramiko command execution can block; keep it off the Tk event loop.
         def worker():
             try:
                 output = self.app.ssh.run_command(command)
@@ -123,6 +124,7 @@ class ActionController:
 
         self.app.log(f"Uploading:\n  local:  {local_path}\n  remote: {remote_path}")
 
+        # File transfers may take time; keep the UI responsive during upload.
         def worker():
             try:
                 self.app.ssh.upload_file(local_path, remote_path)
@@ -165,6 +167,7 @@ class ActionController:
     def perform_upload(self, local_path: str, remote_path: str):
         self.app.log(f"SCP Upload:\n  local:  {local_path}\n  remote: {remote_path}")
 
+        # File transfers may take time; keep the UI responsive during upload.
         def worker():
             try:
                 self.app.ssh.upload_file(local_path, remote_path)

@@ -38,6 +38,7 @@ class SSHGuiApp(tk.Tk):
     THEMES = THEMES
 
     def __init__(self, init_ui: bool = True):
+        """Create the app, optionally skipping real widgets for headless tests."""
         super().__init__()
         self.app_config_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -94,6 +95,7 @@ class SSHGuiApp(tk.Tk):
         self.apply_theme("Default")
 
     def _init_headless_state(self):
+        """Install lightweight stand-ins for UI attributes used by controller tests."""
         try:
             from unittest.mock import MagicMock
         except Exception:
@@ -144,10 +146,6 @@ class SSHGuiApp(tk.Tk):
 
     def _sync_output_manager_widget(self):
         self.output_manager.output_text = self.output_text
-
-    # -------------------------
-    # UI Construction
-    # -------------------------
 
     def _build_menu(self):
         menubar = tk.Menu(self)
@@ -305,11 +303,10 @@ class SSHGuiApp(tk.Tk):
 
         self.output_text.configure(bg=theme["text_bg"], fg=theme["text_fg"], insertbackground=theme["fg"], selectbackground=theme["select_bg"], selectforeground=theme["select_fg"])
 
-        # Apply colors to raw Tk widgets (Label, Button, Entry, etc.)
         self._apply_theme_to_children(self, theme, btn_bg, border, label_fg)
 
     def _apply_theme_to_children(self, parent, theme, btn_bg, border, label_fg):
-        """Recursively configure raw Tk widgets that ttk styles don't reach."""
+        """Keep classic Tk widgets consistent with ttk-managed theme colors."""
         for child in parent.winfo_children():
             cls_name = child.winfo_class()
             try:
@@ -361,10 +358,6 @@ class SSHGuiApp(tk.Tk):
                 pass
             self._apply_theme_to_children(child, theme, btn_bg, border, label_fg)
 
-    # -------------------------
-    # Sections loader + integration
-    # -------------------------
-
     def load_sections_from_file(self, path: str) -> List[ButtonSection]:
         return self.sections_controller.load_sections_from_file(path)
 
@@ -374,19 +367,11 @@ class SSHGuiApp(tk.Tk):
     def open_sections_file(self, default_path: str = DEFAULT_SECTIONS_FILE):
         self.sections_controller.open_sections_file(default_path)
 
-    # -------------------------
-    # Define Sections / Buttons (fallback)
-    # -------------------------
-
     def _define_sections(self) -> List[ButtonSection]:
         return self.sections_controller.define_sections()
 
     def _build_button_sections(self, sections: List[ButtonSection]):
         self.sections_controller.build_button_sections(sections)
-
-    # -------------------------
-    # Connection handlers
-    # -------------------------
 
     def on_host_selected(self, _event):
         self.connection_controller.on_host_selected(_event)
@@ -403,8 +388,6 @@ class SSHGuiApp(tk.Tk):
     def delete_selected_profile(self):
         self.profile_controller.delete_selected_profile()
 
-    # --- Delegation to validation module ---
-
     def _parse_int_input(self, value: str, label: str, minimum: int = 1, maximum: Optional[int] = None) -> Optional[int]:
         return parse_int_input(value, label, minimum, maximum)
 
@@ -417,8 +400,6 @@ class SSHGuiApp(tk.Tk):
     def _get_host_key_mode(self) -> str:
         return get_host_key_mode(self.host_key_mode_var)
 
-    # --- Config persistence delegation ---
-
     def _load_app_config(self) -> dict:
         return app_config_mod.load_app_config(self.app_config_path)
 
@@ -427,8 +408,6 @@ class SSHGuiApp(tk.Tk):
 
     def _create_temp_ssh_manager(self):
         return SSHManager()
-
-    # --- Connection state ---
 
     def _refresh_connection_state(self, *, notify_on_drop: bool = False):
         self.connection_controller.refresh_connection_state(notify_on_drop=notify_on_drop)
@@ -452,10 +431,6 @@ class SSHGuiApp(tk.Tk):
             self.disconnect_btn.configure(state="normal" if connected else "disabled")
 
         self.after_idle(apply)
-
-    # -------------------------
-    # Action helpers
-    # -------------------------
 
     def run_ssh_command(self, command: str):
         self.action_controller.run_ssh_command(command)
@@ -497,10 +472,6 @@ Tips:
 """
         messagebox.showinfo("About / Usage", help_text.strip())
 
-    # -------------------------
-    # Output helpers
-    # -------------------------
-
     def log(self, text: str):
         self.output_manager.log(text)
 
@@ -539,10 +510,6 @@ Tips:
                 self.log(f"[OK] Output saved to {file_path}")
             except Exception as exc:
                 self.log(f"[ERROR] Failed to save output: {exc}")
-
-    # -------------------------
-    # File watching / auto-reload
-    # -------------------------
 
     def _get_mtime(self, path: str):
         return self.sections_controller.get_mtime(path)

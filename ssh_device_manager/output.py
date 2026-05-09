@@ -9,7 +9,7 @@ from tkinter import filedialog, messagebox
 
 
 class OutputManager:
-    """Manages the terminal output Text widget and thread-safe log queue."""
+    """Manage the output Text widget and queue logs from worker threads."""
 
     def __init__(self, output_text: tk.Text):
         self.output_text = output_text
@@ -35,6 +35,7 @@ class OutputManager:
         poll()
 
     def _append(self, msg: str):
+        """Temporarily unlock the read-only Text widget to append one message."""
         self.output_text.configure(state="normal")
         self.output_text.insert("end", msg)
         self.output_text.see("end")

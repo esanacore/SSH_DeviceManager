@@ -8,11 +8,12 @@ from typing import Optional
 
 
 def default_app_config() -> dict:
+    """Return the persisted config shape expected by the rest of the app."""
     return {"profiles": {}}
 
 
 def load_app_config(path: str) -> dict:
-    """Load app config from *path*, returning defaults on any error."""
+    """Load app config from *path*, returning a sanitized default-compatible dict."""
     if not os.path.exists(path):
         config = default_app_config()
         save_app_config(path, config)
@@ -26,6 +27,8 @@ def load_app_config(path: str) -> dict:
         save_app_config(path, config)
         return config
 
+    # Keep only keys the application understands so a malformed file cannot leak
+    # unexpected structure into profile handling.
     config = default_app_config()
     if isinstance(loaded, dict):
         profiles = loaded.get("profiles")

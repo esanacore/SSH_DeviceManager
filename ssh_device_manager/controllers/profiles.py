@@ -10,6 +10,7 @@ class ProfileController:
         self.app = app
 
     def refresh_profile_list(self):
+        """Refresh the combo box while preserving the current selection when possible."""
         profile_names = sorted(self.app.app_config.get("profiles", {}).keys())
         self.app.profile_combo["values"] = profile_names
         current = self.app.profile_select_var.get().strip()
@@ -21,6 +22,7 @@ class ProfileController:
             self.app.profile_select_var.set("")
 
     def save_profile(self):
+        """Persist reusable connection settings without storing the password."""
         profile_name = (
             self.app.profile_name_var.get().strip()
             or self.app.profile_select_var.get().strip()
@@ -37,6 +39,7 @@ class ProfileController:
             return
         host, port, user, _pw, timeout = inputs
 
+        # Passwords are intentionally omitted; profiles store connection metadata only.
         self.app.app_config.setdefault("profiles", {})[profile_name] = {
             "host": host,
             "port": port,
@@ -51,6 +54,7 @@ class ProfileController:
         self.app.log(f"[OK] Saved profile '{profile_name}'.")
 
     def load_selected_profile(self):
+        """Populate the connection form from the selected saved profile."""
         profile_name = self.app.profile_select_var.get().strip()
         if not profile_name:
             messagebox.showwarning(
@@ -81,6 +85,7 @@ class ProfileController:
         self.app.log(f"[OK] Loaded profile '{profile_name}'.")
 
     def delete_selected_profile(self):
+        """Delete the selected profile after user confirmation."""
         profile_name = self.app.profile_select_var.get().strip()
         if not profile_name:
             messagebox.showwarning(

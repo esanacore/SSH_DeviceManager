@@ -161,6 +161,7 @@ class SectionsController:
             return None
 
     def start_sections_watcher(self, interval_ms: int = 1000):
+        """Watch sections.json by rescheduling lightweight mtime checks with after()."""
         def check():
             try:
                 current = self.get_mtime(self.app.sections_path)

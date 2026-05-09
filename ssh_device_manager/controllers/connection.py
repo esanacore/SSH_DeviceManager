@@ -28,6 +28,7 @@ class ConnectionController:
             self.app.log("[WARN] SSH session is no longer active.")
 
     def start_connection_monitor(self):
+        """Poll connection state through Tk's event loop, where UI updates are safe."""
         def poll():
             was_connected = self.app.status_var.get() == "Connected"
             self.refresh_connection_state(notify_on_drop=was_connected)
@@ -55,6 +56,7 @@ class ConnectionController:
         self.app.log(f"Connecting to {host}:{port} as {user}...")
         self.app.is_connecting = True
 
+        # Network connection attempts can block; keep them off the Tk event loop.
         def worker():
             try:
                 self.app.ssh.connect(
@@ -122,6 +124,7 @@ class ConnectionController:
 
         self.app.log("Testing connection...")
 
+        # Use a temporary SSH client so a probe cannot disturb the active session.
         def worker():
             try:
                 temp_ssh = self.app._create_temp_ssh_manager()

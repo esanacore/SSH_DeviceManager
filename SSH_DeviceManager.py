@@ -6,6 +6,11 @@ This file re-exports every public name so that existing imports like
 ``import SSH_DeviceManager`` and ``SSH_DeviceManager.SSHGuiApp`` keep working.
 """
 
+import os
+import threading  # noqa: F401
+import traceback
+from tkinter import filedialog, messagebox  # noqa: F401
+
 # Re-export public API from the package
 from ssh_device_manager import (           # noqa: F401
     ActionButton,
@@ -20,20 +25,16 @@ from ssh_device_manager import (           # noqa: F401
 )
 from ssh_device_manager.paramiko_compat import paramiko  # noqa: F401
 
-# Re-export stdlib / third-party names that tests and external code reference
-# through this module (e.g. ``SSH_DeviceManager.paramiko``).
-import threading         # noqa: F401
-from tkinter import filedialog, messagebox  # noqa: F401
-
 def main():
+    """Run the SSH Device Manager GUI app."""
     app = SSHGuiApp()
     app.mainloop()
+
 
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        import traceback, os
+    except Exception as exc:
         log_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "ssh_device_manager_startup_error.log",
@@ -42,4 +43,4 @@ if __name__ == "__main__":
             traceback.print_exc(file=f)
         # Also print to stderr so terminal users still see it
         traceback.print_exc()
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

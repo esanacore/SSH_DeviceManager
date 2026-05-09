@@ -40,6 +40,10 @@ class OutputManager:
         self.output_text.see("end")
         self.output_text.configure(state="disabled")
 
+    def append(self, msg: str):
+        """Append output text using the managed Text widget."""
+        self._append(msg)
+
     def clear(self):
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", "end")

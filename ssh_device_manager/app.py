@@ -7,6 +7,7 @@ the Tkinter UI.
 """
 
 import os
+import queue
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import List, Optional
@@ -21,7 +22,7 @@ from .controllers import (
     ProfileController,
     SectionsController,
 )
-from .constants import COMMAND_HISTORY_LIMIT, APP_CONFIG_FILE, DEFAULT_SECTIONS_FILE
+from .constants import APP_CONFIG_FILE, DEFAULT_SECTIONS_FILE
 from .output import OutputManager
 from .validation import parse_int_input, get_connection_inputs, get_host_key_mode
 
@@ -509,7 +510,7 @@ Tips:
 
     def _append_output(self, msg: str):
         self._sync_output_manager_widget()
-        self.output_manager._append(msg)
+        self.output_manager.append(msg)
 
     def clear_output(self):
         self._sync_output_manager_widget()

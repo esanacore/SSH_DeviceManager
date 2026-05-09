@@ -7,24 +7,23 @@ the Tkinter UI.
 """
 
 import os
-import queue
-import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from typing import Callable, List, Optional
+from typing import List, Optional
 
-import paramiko
-
-from .models import ActionButton, ButtonSection, ToolTip
+from .models import ButtonSection
 from .ssh_manager import SSHManager
 from .themes import THEMES
 from . import config as app_config_mod
-from . import sections_loader
+from .controllers import (
+    ActionController,
+    ConnectionController,
+    ProfileController,
+    SectionsController,
+)
+from .constants import COMMAND_HISTORY_LIMIT, APP_CONFIG_FILE, DEFAULT_SECTIONS_FILE
+from .output import OutputManager
 from .validation import parse_int_input, get_connection_inputs, get_host_key_mode
-
-COMMAND_HISTORY_LIMIT = 500
-APP_CONFIG_FILE = "ssh_device_manager_config.json"
-DEFAULT_SECTIONS_FILE = "sections.json"
 
 
 class SSHGuiApp(tk.Tk):
@@ -46,55 +45,20 @@ class SSHGuiApp(tk.Tk):
         )
         self.app_config = app_config_mod.load_app_config(self.app_config_path)
 
+        self.ssh = SSHManager()
+        self.command_history: List[str] = []
+        self.history_index: int = 0
+        self.is_connecting = False
+        self.host_history: List[str] = []
+        self.current_theme = tk.StringVar(value="Default")
+
+        self.connection_controller = ConnectionController(self)
+        self.action_controller = ActionController(self)
+        self.profile_controller = ProfileController(self)
+        self.sections_controller = SectionsController(self)
+
         if not init_ui:
-            self.log_queue: "queue.Queue[str]" = queue.Queue()
-
-            self.ssh = SSHManager()
-            self.command_history: List[str] = []
-            self.history_index: int = 0
-            self.is_connecting = False
-            self.host_history: List[str] = []
-
-            self.current_theme = tk.StringVar(value="Default")
-
-            try:
-                from unittest.mock import MagicMock
-            except Exception:
-                MagicMock = lambda *a, **k: None
-
-            self.host_var = MagicMock()
-            self.user_var = MagicMock()
-            self.port_var = MagicMock()
-            self.pass_var = MagicMock()
-            self.timeout_var = MagicMock()
-            self.clear_creds_var = MagicMock()
-            self.host_key_mode_var = MagicMock()
-            self.host_key_mode_var.get.return_value = "warning"
-            self.profile_name_var = MagicMock()
-            self.profile_name_var.get.return_value = ""
-            self.profile_select_var = MagicMock()
-            self.profile_select_var.get.return_value = ""
-
-            class _ComboPlaceholder:
-                def __init__(self):
-                    self._items = {}
-                def __setitem__(self, k, v):
-                    self._items[k] = v
-                def __getitem__(self, k):
-                    return self._items.get(k)
-            self.host_combo = _ComboPlaceholder()
-            self.profile_combo = _ComboPlaceholder()
-
-            class _BtnPlaceholder:
-                def configure(self, *a, **k):
-                    pass
-            self.connect_btn = _BtnPlaceholder()
-            self.disconnect_btn = _BtnPlaceholder()
-
-            self.output_text = MagicMock()
-
-            self.sections_path = DEFAULT_SECTIONS_FILE
-            self.sections = self.load_sections_from_file(self.sections_path)
+            self._init_headless_state()
             return
 
         self.title("SSH Command Console (Template)")
@@ -111,16 +75,9 @@ class SSHGuiApp(tk.Tk):
 
         self.log_queue: "queue.Queue[str]" = queue.Queue()
 
-        self.ssh = SSHManager()
-        self.command_history: List[str] = []
-        self.history_index: int = 0
-        self.is_connecting = False
-        self.host_history: List[str] = []
-
-        self.current_theme = tk.StringVar(value="Default")
-
         self._build_menu()
         self._build_ui()
+        self._initialize_output_manager()
 
         self._start_log_poller()
         self._start_connection_monitor()
@@ -134,6 +91,58 @@ class SSHGuiApp(tk.Tk):
         self._start_sections_watcher()
 
         self.apply_theme("Default")
+
+    def _init_headless_state(self):
+        try:
+            from unittest.mock import MagicMock
+        except Exception:
+            MagicMock = lambda *a, **k: None
+
+        self.host_var = MagicMock()
+        self.user_var = MagicMock()
+        self.port_var = MagicMock()
+        self.pass_var = MagicMock()
+        self.timeout_var = MagicMock()
+        self.clear_creds_var = MagicMock()
+        self.host_key_mode_var = MagicMock()
+        self.host_key_mode_var.get.return_value = "warning"
+        self.profile_name_var = MagicMock()
+        self.profile_name_var.get.return_value = ""
+        self.profile_select_var = MagicMock()
+        self.profile_select_var.get.return_value = ""
+        self.status_var = MagicMock()
+        self.status_var.get.return_value = "Disconnected"
+
+        class _ComboPlaceholder:
+            def __init__(self):
+                self._items = {}
+            def __setitem__(self, key, value):
+                self._items[key] = value
+            def __getitem__(self, key):
+                return self._items.get(key)
+
+        self.host_combo = _ComboPlaceholder()
+        self.profile_combo = _ComboPlaceholder()
+
+        class _BtnPlaceholder:
+            def configure(self, *a, **k):
+                pass
+
+        self.connect_btn = _BtnPlaceholder()
+        self.disconnect_btn = _BtnPlaceholder()
+
+        self.output_text = MagicMock()
+        self._initialize_output_manager()
+
+        self.sections_path = DEFAULT_SECTIONS_FILE
+        self.sections = self.load_sections_from_file(self.sections_path)
+
+    def _initialize_output_manager(self):
+        self.output_manager = OutputManager(self.output_text)
+        self.log_queue = self.output_manager.log_queue
+
+    def _sync_output_manager_widget(self):
+        self.output_manager.output_text = self.output_text
 
     # -------------------------
     # UI Construction
@@ -356,190 +365,42 @@ class SSHGuiApp(tk.Tk):
     # -------------------------
 
     def load_sections_from_file(self, path: str) -> List[ButtonSection]:
-        return sections_loader.load_sections_from_file(
-            path,
-            log=self.log,
-            run_ssh_command=self.run_ssh_command,
-            upload_config_template=self.upload_config_template,
-            send_file_scp=self.send_file_scp,
-            prompt_and_run_custom_command=self.prompt_and_run_custom_command,
-            fallback=self._define_sections,
-        )
+        return self.sections_controller.load_sections_from_file(path)
 
     def reload_sections(self, path: str = DEFAULT_SECTIONS_FILE):
-        self.sections_path = path
-        self.log(f"Reloading sections from '{path}'...")
-        self.sections = self.load_sections_from_file(path)
-        self._build_button_sections(self.sections)
-        self._sections_mtime = self._get_mtime(self.sections_path)
-        self.log("[OK] Sections reloaded.")
+        self.sections_controller.reload_sections(path)
 
     def open_sections_file(self, default_path: str = DEFAULT_SECTIONS_FILE):
-        p = filedialog.askopenfilename(
-            initialfile=default_path,
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-        )
-        if p:
-            self.reload_sections(p)
+        self.sections_controller.open_sections_file(default_path)
 
     # -------------------------
     # Define Sections / Buttons (fallback)
     # -------------------------
 
     def _define_sections(self) -> List[ButtonSection]:
-        show_version = "show version"
-        show_interfaces = "show interfaces"
-        reboot = "reload"
-
-        return [
-            ButtonSection(
-                title="Status",
-                max_buttons=6,
-                actions=[
-                    ActionButton("Show Version", enabled=True, handler=lambda: self.run_ssh_command(show_version), tooltip="Runs: show version"),
-                    ActionButton("Show Interfaces", enabled=True, handler=lambda: self.run_ssh_command(show_interfaces), tooltip="Runs: show interfaces"),
-                    ActionButton("Placeholder A", enabled=False, handler=lambda: self.run_ssh_command("echo Placeholder A"), tooltip="Disabled until you set enabled=True"),
-                ],
-            ),
-            ButtonSection(
-                title="Maintenance",
-                max_buttons=6,
-                actions=[
-                    ActionButton("Upload Config (Template)", enabled=True, handler=self.upload_config_template, tooltip="Opens a file picker and uploads to a remote path"),
-                    ActionButton("Send File via SCP", enabled=True, handler=self.send_file_scp, tooltip="Send a file to the remote server via SCP"),
-                    ActionButton("Reboot Device", enabled=False, handler=lambda: self.run_ssh_command(reboot), tooltip="Dangerous: enable only when ready"),
-                ],
-            ),
-            ButtonSection(
-                title="Custom",
-                max_buttons=6,
-                actions=[
-                    ActionButton("Run Custom Command...", enabled=True, handler=self.prompt_and_run_custom_command, tooltip="Prompts you for a command string"),
-                ],
-            ),
-        ]
+        return self.sections_controller.define_sections()
 
     def _build_button_sections(self, sections: List[ButtonSection]):
-        for child in self.commands_frame.winfo_children():
-            child.destroy()
-
-        container = ttk.Frame(self.commands_frame)
-        container.pack(fill="x", padx=8, pady=8)
-
-        total_columns = len(sections) * 2 - 1
-        for i in range(total_columns):
-            if i % 2 == 0:
-                container.columnconfigure(i, weight=1, uniform="section")
-            else:
-                container.columnconfigure(i, weight=0)
-
-        for i, section in enumerate(sections):
-            sec_frame = ttk.Frame(container, padding=(6, 2))
-            sec_frame.grid(row=0, column=i * 2, sticky="nsew")
-
-            ttk.Label(sec_frame, text=section.title, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
-
-            enabled_actions = [a for a in section.actions if a.enabled]
-            if len(enabled_actions) > section.max_buttons:
-                self.log(f"[WARN] Section '{section.title}' exceeds max_buttons={section.max_buttons}. Truncating.")
-                enabled_actions = enabled_actions[: section.max_buttons]
-
-            for action in enabled_actions:
-                btn = ttk.Button(sec_frame, text=action.label, command=action.handler, width=24)
-                btn.pack(fill="x", pady=3)
-                ToolTip(btn, action.tooltip)
-
-            if i < len(sections) - 1:
-                sep = ttk.Separator(container, orient="vertical")
-                sep.grid(row=0, column=i * 2 + 1, sticky="ns", padx=10)
-                container.grid_rowconfigure(0, weight=1)
+        self.sections_controller.build_button_sections(sections)
 
     # -------------------------
     # Connection handlers
     # -------------------------
 
     def on_host_selected(self, _event):
-        if self.host_var.get() == "<Clear History>":
-            self.host_history.clear()
-            self.host_combo["values"] = []
-            self.host_var.set("")
-            self.log("[INFO] Host history cleared.")
+        self.connection_controller.on_host_selected(_event)
 
     def _refresh_profile_list(self):
-        profile_names = sorted(self.app_config.get("profiles", {}).keys())
-        self.profile_combo["values"] = profile_names
-        current = self.profile_select_var.get().strip()
-        if current in profile_names:
-            return
-        if profile_names:
-            self.profile_select_var.set(profile_names[0])
-        else:
-            self.profile_select_var.set("")
+        self.profile_controller.refresh_profile_list()
 
     def save_profile(self):
-        profile_name = self.profile_name_var.get().strip() or self.profile_select_var.get().strip()
-        if not profile_name:
-            messagebox.showwarning("Missing Profile Name", "Enter a profile name before saving.")
-            return
-
-        inputs = self._get_connection_inputs()
-        if inputs is None:
-            return
-        host, port, user, _pw, timeout = inputs
-
-        self.app_config.setdefault("profiles", {})[profile_name] = {
-            "host": host,
-            "port": port,
-            "username": user,
-            "timeout": timeout,
-            "host_key_mode": self._get_host_key_mode(),
-        }
-        self._save_app_config()
-        self._refresh_profile_list()
-        self.profile_select_var.set(profile_name)
-        self.profile_name_var.set(profile_name)
-        self.log(f"[OK] Saved profile '{profile_name}'.")
+        self.profile_controller.save_profile()
 
     def load_selected_profile(self):
-        profile_name = self.profile_select_var.get().strip()
-        if not profile_name:
-            messagebox.showwarning("No Profile Selected", "Choose a saved profile to load.")
-            return
-
-        profile = self.app_config.get("profiles", {}).get(profile_name)
-        if not isinstance(profile, dict):
-            messagebox.showerror("Missing Profile", f"Profile '{profile_name}' was not found.")
-            self._refresh_profile_list()
-            return
-
-        host = str(profile.get("host", ""))
-        self.profile_name_var.set(profile_name)
-        self.host_var.set(host)
-        self.port_var.set(int(profile.get("port", 22)))
-        self.user_var.set(str(profile.get("username", "")))
-        self.timeout_var.set(int(profile.get("timeout", 10)))
-        self.host_key_mode_var.set(str(profile.get("host_key_mode", "warning")))
-        if host and host not in self.host_history:
-            self.host_history.insert(0, host)
-            self.host_combo["values"] = self.host_history + ["<Clear History>"]
-        self.log(f"[OK] Loaded profile '{profile_name}'.")
+        self.profile_controller.load_selected_profile()
 
     def delete_selected_profile(self):
-        profile_name = self.profile_select_var.get().strip()
-        if not profile_name:
-            messagebox.showwarning("No Profile Selected", "Choose a saved profile to delete.")
-            return
-        confirmed = messagebox.askyesno("Delete Profile", f"Delete profile '{profile_name}'?")
-        if not confirmed:
-            return
-        profiles = self.app_config.get("profiles", {})
-        if profile_name in profiles:
-            del profiles[profile_name]
-            self._save_app_config()
-            self._refresh_profile_list()
-            if self.profile_name_var.get().strip() == profile_name:
-                self.profile_name_var.set("")
-            self.log(f"[OK] Deleted profile '{profile_name}'.")
+        self.profile_controller.delete_selected_profile()
 
     # --- Delegation to validation module ---
 
@@ -563,134 +424,32 @@ class SSHGuiApp(tk.Tk):
     def _save_app_config(self):
         app_config_mod.save_app_config(self.app_config_path, self.app_config)
 
+    def _create_temp_ssh_manager(self):
+        return SSHManager()
+
     # --- Connection state ---
 
     def _refresh_connection_state(self, *, notify_on_drop: bool = False):
-        connected = self.ssh.is_connected()
-        was_connecting = self.is_connecting
-        self._set_connected_ui(connected)
-        if notify_on_drop and not connected and not was_connecting:
-            self.log("[WARN] SSH session is no longer active.")
+        self.connection_controller.refresh_connection_state(notify_on_drop=notify_on_drop)
 
     def _start_connection_monitor(self):
-        def poll():
-            was_connected = self.status_var.get() == "Connected"
-            self._refresh_connection_state(notify_on_drop=was_connected)
-            self.after(1500, poll)
-        self.after(1500, poll)
+        self.connection_controller.start_connection_monitor()
 
     def on_connect(self):
-        inputs = self._get_connection_inputs()
-        if inputs is None:
-            return
-        host, port, user, pw, timeout = inputs
-
-        if self.is_connecting:
-            messagebox.showwarning("In Progress", "Connection attempt already in progress.")
-            return
-
-        if host not in self.host_history:
-            self.host_history.insert(0, host)
-            if len(self.host_history) > 10:
-                self.host_history.pop()
-            self.host_combo["values"] = self.host_history + ["<Clear History>"]
-
-        host_key_mode = self._get_host_key_mode()
-        self.log(f"Connecting to {host}:{port} as {user}...")
-        self.is_connecting = True
-
-        def worker():
-            try:
-                self.ssh.connect(host, port, user, pw, timeout=timeout, host_key_mode=host_key_mode)
-                self.log("[OK] Connected.")
-                self.log(f"[INFO] Host key policy: {host_key_mode}.")
-                self._set_connected_ui(True)
-            except paramiko.AuthenticationException:
-                self.log(
-                    f"[ERROR] Authentication failed for '{user}@{host}:{port}'.\n"
-                    f"  \u2022 Double-check your Username and Password.\n"
-                    f"  \u2022 The server may not allow password authentication."
-                )
-                self._set_connected_ui(False)
-            except paramiko.SSHException as e:
-                self.log(
-                    f"[ERROR] SSH error while connecting to {host}:{port}:\n"
-                    f"  \u2022 {e}\n"
-                    f"  \u2022 Verify the host is reachable and running an SSH server."
-                )
-                self._set_connected_ui(False)
-            except OSError as e:
-                self.log(
-                    f"[ERROR] Network error connecting to {host}:{port}:\n"
-                    f"  \u2022 {e}\n"
-                    f"  \u2022 Check the Host/IP and Port, and that the device is online."
-                )
-                self._set_connected_ui(False)
-            except Exception as e:
-                self.log(f"[ERROR] Connection failed: {e}")
-                self._set_connected_ui(False)
-            finally:
-                self.is_connecting = False
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.connection_controller.connect()
 
     def on_disconnect(self):
-        self.log("Disconnecting...")
-        try:
-            self.ssh.disconnect()
-        finally:
-            if self.clear_creds_var.get():
-                self.pass_var.set("")
-                self.log("[INFO] Credentials cleared.")
-            self._set_connected_ui(False)
-            self.log("[OK] Disconnected.")
+        self.connection_controller.disconnect()
 
     def test_connection(self):
-        self._refresh_connection_state()
-        if self.ssh.is_connected():
-            messagebox.showinfo("Connected", "Already connected to SSH server.")
-            return
-
-        inputs = self._get_connection_inputs()
-        if inputs is None:
-            return
-        host, port, user, pw, timeout = inputs
-        host_key_mode = self._get_host_key_mode()
-
-        self.log("Testing connection...")
-
-        def worker():
-            try:
-                temp_ssh = SSHManager()
-                temp_ssh.connect(host, port, user, pw, timeout=timeout, host_key_mode=host_key_mode)
-                self.log("[OK] Connection test successful.")
-                self.log(f"[INFO] Host key policy: {host_key_mode}.")
-                temp_ssh.disconnect()
-            except paramiko.AuthenticationException:
-                self.log(
-                    f"[ERROR] Test failed \u2014 authentication rejected for '{user}@{host}:{port}'.\n"
-                    f"  \u2022 Double-check your Username and Password."
-                )
-            except paramiko.SSHException as e:
-                self.log(
-                    f"[ERROR] Test failed \u2014 SSH error: {e}\n"
-                    f"  \u2022 Verify the host is reachable and running an SSH server."
-                )
-            except OSError as e:
-                self.log(
-                    f"[ERROR] Test failed \u2014 network error: {e}\n"
-                    f"  \u2022 Check the Host/IP and Port, and that the device is online."
-                )
-            except Exception as e:
-                self.log(f"[ERROR] Connection test failed: {e}")
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.connection_controller.test_connection()
 
     def _set_connected_ui(self, connected: bool):
         def apply():
             self.status_var.set("Connected" if connected else "Disconnected")
             self.connect_btn.configure(state="disabled" if connected else "normal")
             self.disconnect_btn.configure(state="normal" if connected else "disabled")
+
         self.after_idle(apply)
 
     # -------------------------
@@ -698,160 +457,19 @@ class SSHGuiApp(tk.Tk):
     # -------------------------
 
     def run_ssh_command(self, command: str):
-        self._refresh_connection_state()
-        if not self.ssh.is_connected():
-            messagebox.showwarning("Not Connected", "Please connect over SSH first.")
-            return
-
-        if command in self.command_history:
-            self.command_history.remove(command)
-        self.command_history.insert(0, command)
-        if len(self.command_history) > COMMAND_HISTORY_LIMIT:
-            self.command_history.pop()
-
-        self.history_index = 0
-        self.log(f"\n$ {command}")
-
-        def worker():
-            try:
-                output = self.ssh.run_command(command)
-                self.log(output.strip() if output.strip() else "(no output)")
-            except Exception as e:
-                self.log(f"[ERROR] Command failed: {e}")
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.action_controller.run_ssh_command(command)
 
     def prompt_and_run_custom_command(self):
-        if not self.ssh.is_connected():
-            messagebox.showwarning("Not Connected", "Please connect over SSH first.")
-            return
-
-        dialog = tk.Toplevel(self)
-        dialog.title("Run Custom Command")
-        dialog.transient(self)
-        dialog.grab_set()
-        dialog.geometry("500x100")
-        dialog.resizable(False, False)
-
-        tk.Label(dialog, text="Command:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
-
-        cmd_var = tk.StringVar()
-        entry = ttk.Entry(dialog, textvariable=cmd_var, width=60)
-        entry.grid(row=0, column=1, padx=10, pady=10)
-        entry.focus_set()
-
-        history_state = {"index": -1, "draft": ""}
-
-        def navigate_history(direction: int):
-            if not self.command_history:
-                return
-            current_index = history_state["index"]
-            if current_index == -1:
-                history_state["draft"] = cmd_var.get()
-            if direction < 0:
-                new_index = min(len(self.command_history) - 1, current_index + 1)
-            else:
-                new_index = current_index - 1
-            history_state["index"] = new_index
-            if new_index == -1:
-                cmd_var.set(history_state["draft"])
-            else:
-                cmd_var.set(self.command_history[new_index])
-            entry.icursor("end")
-
-        def on_key(event):
-            if event.keysym == "Up":
-                navigate_history(-1)
-                return "break"
-            elif event.keysym == "Down":
-                navigate_history(1)
-                return "break"
-            elif event.keysym == "Return":
-                run_and_close()
-                return "break"
-            elif event.keysym == "Escape":
-                dialog.destroy()
-                return "break"
-
-        entry.bind("<Key-Up>", on_key)
-        entry.bind("<Key-Down>", on_key)
-        entry.bind("<Return>", on_key)
-        entry.bind("<Escape>", on_key)
-
-        def run_and_close():
-            cmd = cmd_var.get().strip()
-            if not cmd:
-                messagebox.showwarning("Missing Command", "Enter a command to run.")
-                entry.focus_set()
-                return
-            self.run_ssh_command(cmd)
-            dialog.destroy()
-
-        ttk.Button(dialog, text="Run", command=run_and_close).grid(row=1, column=1, padx=10, pady=(0, 10), sticky="e")
-        ttk.Button(dialog, text="Cancel", command=dialog.destroy).grid(row=1, column=0, padx=10, pady=(0, 10), sticky="w")
+        self.action_controller.prompt_and_run_custom_command()
 
     def upload_config_template(self, remote_path: str = "/tmp/uploaded_config.txt"):
-        self._refresh_connection_state()
-        if not self.ssh.is_connected():
-            messagebox.showwarning("Not Connected", "Please connect over SSH first.")
-            return
-
-        local_path = filedialog.askopenfilename(title="Select a file to upload")
-        if not local_path:
-            return
-
-        self.log(f"Uploading:\n  local:  {local_path}\n  remote: {remote_path}")
-
-        def worker():
-            try:
-                self.ssh.upload_file(local_path, remote_path)
-                self.log("[OK] Upload complete.")
-            except Exception as e:
-                self.log(f"[ERROR] Upload failed: {e}")
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.action_controller.upload_config_template(remote_path)
 
     def send_file_scp(self):
-        if not self.ssh.is_connected():
-            messagebox.showwarning("Not Connected", "Please connect over SSH first.")
-            return
-
-        local_path = filedialog.askopenfilename(title="Select a file to send")
-        if not local_path:
-            return
-
-        dialog = tk.Toplevel(self)
-        dialog.title("Remote Destination")
-        dialog.transient(self)
-        dialog.grab_set()
-        dialog.geometry("400x120")
-
-        tk.Label(dialog, text="Remote Path (including filename):").pack(pady=10)
-        remote_var = tk.StringVar(value=f"/tmp/{local_path.split('/')[-1]}")
-        entry = ttk.Entry(dialog, textvariable=remote_var, width=50)
-        entry.pack(pady=5)
-        entry.focus_set()
-        entry.select_range(0, tk.END)
-
-        def on_confirm():
-            remote_path = remote_var.get().strip()
-            if remote_path:
-                dialog.destroy()
-                self._perform_upload(local_path, remote_path)
-
-        tk.Button(dialog, text="Upload", command=on_confirm).pack(pady=10)
+        self.action_controller.send_file_scp()
 
     def _perform_upload(self, local_path: str, remote_path: str):
-        self.log(f"SCP Upload:\n  local:  {local_path}\n  remote: {remote_path}")
-
-        def worker():
-            try:
-                self.ssh.upload_file(local_path, remote_path)
-                self.log("[OK] SCP Upload complete.")
-            except Exception as e:
-                self.log(f"[ERROR] SCP Upload failed: {e}")
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.action_controller.perform_upload(local_path, remote_path)
 
     def show_help_dialog(self):
         help_text = """
@@ -883,34 +501,19 @@ Tips:
     # -------------------------
 
     def log(self, text: str):
-        import time
-        timestamp = time.strftime("%H:%M:%S")
-        self.log_queue.put(f"[{timestamp}] {text}\n")
+        self.output_manager.log(text)
 
     def _start_log_poller(self):
-        import queue as _q
-
-        def poll():
-            try:
-                while True:
-                    msg = self.log_queue.get_nowait()
-                    self._append_output(msg)
-            except _q.Empty:
-                pass
-            self.after(80, func=poll)
-
-        poll()
+        self._sync_output_manager_widget()
+        self.output_manager.start_poller(self)
 
     def _append_output(self, msg: str):
-        self.output_text.configure(state="normal")
-        self.output_text.insert("end", msg)
-        self.output_text.see("end")
-        self.output_text.configure(state="disabled")
+        self._sync_output_manager_widget()
+        self.output_manager._append(msg)
 
     def clear_output(self):
-        self.output_text.configure(state="normal")
-        self.output_text.delete("1.0", "end")
-        self.output_text.configure(state="disabled")
+        self._sync_output_manager_widget()
+        self.output_manager.clear()
 
     def copy_output(self):
         text = self.output_text.get("1.0", "end-1c")
@@ -930,31 +533,18 @@ Tips:
         )
         if file_path:
             try:
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(text)
+                with open(file_path, "w", encoding="utf-8") as handle:
+                    handle.write(text)
                 self.log(f"[OK] Output saved to {file_path}")
-            except Exception as e:
-                self.log(f"[ERROR] Failed to save output: {e}")
+            except Exception as exc:
+                self.log(f"[ERROR] Failed to save output: {exc}")
 
     # -------------------------
     # File watching / auto-reload
     # -------------------------
 
     def _get_mtime(self, path: str):
-        try:
-            return os.path.getmtime(path)
-        except Exception:
-            return None
+        return self.sections_controller.get_mtime(path)
 
     def _start_sections_watcher(self, interval_ms: int = 1000):
-        def check():
-            try:
-                current = self._get_mtime(self.sections_path)
-                if current != getattr(self, "_sections_mtime", None):
-                    self.log(f"[INFO] Detected change in sections file '{self.sections_path}', reloading...")
-                    self.reload_sections(self.sections_path)
-            except Exception as e:
-                self.log(f"[WARN] sections watcher error: {e}")
-            finally:
-                self.after(interval_ms, check)
-        self.after(interval_ms, check)
+        self.sections_controller.start_sections_watcher(interval_ms)

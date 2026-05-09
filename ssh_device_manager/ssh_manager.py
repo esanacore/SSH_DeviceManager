@@ -1,5 +1,7 @@
-"""
-SSH Manager - Wraps Paramiko for SSH connections, command execution, and file transfers.
+"""SSH Manager - Wraps Paramiko for SSH connections, command execution, and file transfers.
+
+This module provides a high-level interface for managing SSH sessions,
+running remote commands, and performing file transfers using SFTP.
 """
 
 from contextlib import suppress
@@ -9,19 +11,26 @@ from .paramiko_compat import paramiko
 
 
 class SSHManager:
-    """
-    Wraps Paramiko SSHClient with:
-    - connect / disconnect
-    - run_command
-    - upload_file (SFTP)
+    """Wraps Paramiko SSHClient with connection and command management.
+
+    Attributes:
+        client: The underlying Paramiko SSHClient instance.
+        sftp: The SFTP client instance, if an SFTP session is active.
+        host_key: The host identifier (currently just the host string).
     """
 
     def __init__(self):
+        """Initializes the SSHManager."""
         self.client: Optional[paramiko.SSHClient] = None
         self.sftp: Optional[paramiko.SFTPClient] = None
         self.host_key: Optional[str] = None
 
     def is_connected(self) -> bool:
+        """Checks if the SSH client is currently connected.
+
+        Returns:
+            True if connected and the transport is active, False otherwise.
+        """
         if not self.client:
             return False
 
@@ -40,14 +49,27 @@ class SSHManager:
         timeout: int = 10,
         host_key_mode: str = "warning",
     ):
-        """
-        Connect via SSH.
+        """Connect via SSH.
 
         SECURITY NOTE:
         - RejectPolicy requires the host key to already exist in known_hosts.
         - WarningPolicy warns and then trusts the presented host key.
         - AutoAddPolicy trusts all host keys silently.
         - This template defaults to WarningPolicy so first-use trust is visible.
+
+        Args:
+            host: Hostname or IP address of the remote device.
+            port: SSH port number.
+            username: SSH username.
+            password: SSH password.
+            timeout: Connection timeout in seconds. Defaults to 10.
+            host_key_mode: Host key verification policy ('strict', 'warning', 'auto').
+                Defaults to 'warning'.
+
+        Raises:
+            paramiko.AuthenticationException: If authentication fails.
+            paramiko.SSHException: If there is an SSH-level error.
+            OSError: If there is a network-level error.
         """
 
         if self.client:
@@ -78,7 +100,7 @@ class SSHManager:
         self.sftp = None
 
     def disconnect(self):
-        """Close SSH and SFTP connections, clear sensitive data."""
+        """Close SSH and SFTP connections and clear sensitive data."""
         with suppress(OSError, paramiko.SSHException):
             if self.sftp:
                 self.sftp.close()
@@ -92,6 +114,18 @@ class SSHManager:
         self.host_key = None
 
     def run_command(self, command: str, timeout: int = 30) -> str:
+        """Executes a command on the remote device.
+
+        Args:
+            command: The shell command to execute.
+            timeout: Command timeout in seconds. Defaults to 30.
+
+        Returns:
+            The combined stdout and stderr from the command.
+
+        Raises:
+            RuntimeError: If not connected to an SSH server.
+        """
         if not self.client:
             raise RuntimeError("Not connected")
 
@@ -102,6 +136,16 @@ class SSHManager:
         return combined
 
     def upload_file(self, local_path: str, remote_path: str):
+        """Uploads a local file to the remote device via SFTP.
+
+        Args:
+            local_path: Path to the local file.
+            remote_path: Destination path on the remote device.
+
+        Raises:
+            RuntimeError: If not connected to an SSH server.
+            OSError: If the file upload fails.
+        """
         if not self.client:
             raise RuntimeError("Not connected")
 

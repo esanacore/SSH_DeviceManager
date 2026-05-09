@@ -1,9 +1,8 @@
-"""
-SSH Device Manager - Thin launcher / backward-compatibility shim.
+"""SSH Device Manager - Thin launcher / backward-compatibility shim.
 
-The real implementation lives in the ``ssh_device_manager`` package.
-This file re-exports every public name so that existing imports like
-``import SSH_DeviceManager`` and ``SSH_DeviceManager.SSHGuiApp`` keep working.
+This script serves as the main entry point for the SSH Device Manager. It
+re-exports the public API from the `ssh_device_manager` package to maintain
+backward compatibility with existing imports.
 """
 
 import os
@@ -25,8 +24,12 @@ from ssh_device_manager import (           # noqa: F401
 )
 from ssh_device_manager.paramiko_compat import paramiko  # noqa: F401
 
+
 def main():
-    """Run the SSH Device Manager GUI app."""
+    """Run the SSH Device Manager GUI app.
+
+    Instantiates the main SSHGuiApp and enters the Tkinter main loop.
+    """
     app = SSHGuiApp()
     app.mainloop()
 

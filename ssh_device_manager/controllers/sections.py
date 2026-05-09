@@ -1,4 +1,8 @@
-"""Section loading and Actions-panel orchestration."""
+"""Section loading and Actions-panel orchestration.
+
+This module contains the SectionsController which manages the loading,
+reloading, and UI rendering of button sections.
+"""
 
 import os
 from tkinter import filedialog, ttk
@@ -8,12 +12,29 @@ from ..models import ActionButton, ButtonSection, ToolTip
 
 
 class SectionsController:
-    """Owns section definitions, loading, rendering, and file watching."""
+    """Owns section definitions, loading, rendering, and file watching.
+
+    Attributes:
+        app: The main application instance (SSHGuiApp).
+    """
 
     def __init__(self, app):
+        """Initializes the SectionsController.
+
+        Args:
+            app: The main application instance.
+        """
         self.app = app
 
     def load_sections_from_file(self, path: str):
+        """Loads button section definitions from a JSON file.
+
+        Args:
+            path: Path to the JSON sections file.
+
+        Returns:
+            A list of ButtonSection objects.
+        """
         return sections_loader.load_sections_from_file(
             path,
             log=self.app.log,
@@ -25,6 +46,11 @@ class SectionsController:
         )
 
     def reload_sections(self, path: str):
+        """Reloads sections from a file and rebuilds the Actions panel.
+
+        Args:
+            path: Path to the JSON sections file.
+        """
         self.app.sections_path = path
         self.app.log(f"Reloading sections from '{path}'...")
         self.app.sections = self.load_sections_from_file(path)
@@ -33,6 +59,11 @@ class SectionsController:
         self.app.log("[OK] Sections reloaded.")
 
     def open_sections_file(self, default_path: str):
+        """Opens a file picker to select and load a sections file.
+
+        Args:
+            default_path: The initial file path to show in the picker.
+        """
         path = filedialog.askopenfilename(
             initialfile=default_path,
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
@@ -41,6 +72,11 @@ class SectionsController:
             self.reload_sections(path)
 
     def define_sections(self):
+        """Returns the default/fallback button sections for the UI.
+
+        Returns:
+            A list of hardcoded ButtonSection objects.
+        """
         show_version = "show version"
         show_interfaces = "show interfaces"
         reboot = "reload"
@@ -109,6 +145,11 @@ class SectionsController:
         ]
 
     def build_button_sections(self, sections):
+        """Constructs the UI widgets for the provided button sections.
+
+        Args:
+            sections: A list of ButtonSection objects to render.
+        """
         for child in self.app.commands_frame.winfo_children():
             child.destroy()
 
@@ -155,13 +196,25 @@ class SectionsController:
                 container.grid_rowconfigure(0, weight=1)
 
     def get_mtime(self, path: str):
+        """Returns the modification time of a file.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            The modification time as a float, or None if the file is missing or inaccessible.
+        """
         try:
             return os.path.getmtime(path)
         except Exception:
             return None
 
     def start_sections_watcher(self, interval_ms: int = 1000):
-        """Watch sections.json by rescheduling lightweight mtime checks with after()."""
+        """Starts a background poller to watch for changes in the sections file.
+
+        Args:
+            interval_ms: Polling interval in milliseconds. Defaults to 1000.
+        """
         def check():
             try:
                 current = self.get_mtime(self.app.sections_path)

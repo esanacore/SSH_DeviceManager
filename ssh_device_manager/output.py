@@ -1,5 +1,7 @@
-"""
-Output pane helpers: thread-safe logging, append, clear, copy, save.
+"""Output pane helpers: thread-safe logging, append, clear, copy, save.
+
+This module provides the OutputManager class, which handles all interactions
+with the terminal output text widget in a thread-safe manner.
 """
 
 import queue
@@ -9,19 +11,39 @@ from tkinter import filedialog, messagebox
 
 
 class OutputManager:
-    """Manage the output Text widget and queue logs from worker threads."""
+    """Manage the output Text widget and queue logs from worker threads.
+
+    Attributes:
+        output_text: The Tkinter Text widget used for output display.
+        log_queue: A thread-safe queue for storing log messages.
+    """
 
     def __init__(self, output_text: tk.Text):
+        """Initializes the OutputManager.
+
+        Args:
+            output_text: The Tkinter Text widget to manage.
+        """
         self.output_text = output_text
         self.log_queue: "queue.Queue[str]" = queue.Queue()
 
     def log(self, text: str):
-        """Thread-safe log: background threads can call this."""
+        """Thread-safe log: background threads can safely call this.
+
+        Args:
+            text: The message to log.
+        """
         timestamp = time.strftime("%H:%M:%S")
         self.log_queue.put(f"[{timestamp}] {text}\n")
 
     def start_poller(self, root: tk.Tk):
-        """Poll the queue every 80ms and append output in the Tk thread."""
+        """Starts a background poller to process the log queue.
+
+        The poller runs in the main Tkinter thread to safely update the UI.
+
+        Args:
+            root: The root Tkinter window or widget used for scheduling 'after' calls.
+        """
 
         def poll():
             try:
@@ -35,29 +57,43 @@ class OutputManager:
         poll()
 
     def _append(self, msg: str):
-        """Temporarily unlock the read-only Text widget to append one message."""
+        """Internal helper to unlock the Text widget and append a message.
+
+        Args:
+            msg: The message to append.
+        """
         self.output_text.configure(state="normal")
         self.output_text.insert("end", msg)
         self.output_text.see("end")
         self.output_text.configure(state="disabled")
 
     def append(self, msg: str):
-        """Append output text using the managed Text widget."""
+        """Public method to append output text directly.
+
+        Args:
+            msg: The message to append.
+        """
         self._append(msg)
 
     def clear(self):
+        """Clears all content from the output Text widget."""
         self.output_text.configure(state="normal")
         self.output_text.delete("1.0", "end")
         self.output_text.configure(state="disabled")
 
     def copy(self, root: tk.Tk):
+        """Copies all text from the output widget to the system clipboard.
+
+        Args:
+            root: The root Tkinter window or widget used for clipboard operations.
+        """
         text = self.output_text.get("1.0", "end-1c")
         root.clipboard_clear()
         root.clipboard_append(text)
         self.log("[OK] Output copied to clipboard.")
 
     def save(self):
-        """Save terminal output to a text file."""
+        """Opens a file dialog to save the output text to a file."""
         text = self.output_text.get("1.0", "end-1c")
 
         if not text.strip():

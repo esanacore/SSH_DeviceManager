@@ -1,7 +1,7 @@
-"""
-Theme definitions for the SSH Device Manager.
+"""Theme definitions for the SSH Device Manager.
 
-Each theme is a dictionary of color keys used by apply_theme() in the app.
+This module contains the THEMES dictionary, which defines the color
+schemes used throughout the application to customize the UI appearance.
 """
 
 THEMES = {

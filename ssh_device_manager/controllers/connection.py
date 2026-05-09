@@ -1,4 +1,8 @@
-"""Connection-related UI orchestration."""
+"""Connection-related UI orchestration.
+
+This module contains the ConnectionController which manages the lifecycle
+of SSH connections and related UI updates.
+"""
 
 import threading
 from tkinter import messagebox
@@ -8,12 +12,26 @@ from ..ssh_manager import SSHManager
 
 
 class ConnectionController:
-    """Owns connection lifecycle, state refresh, and connection-related UI updates."""
+    """Owns connection lifecycle, state refresh, and connection-related UI updates.
+
+    Attributes:
+        app: The main application instance (SSHGuiApp).
+    """
 
     def __init__(self, app):
+        """Initializes the ConnectionController.
+
+        Args:
+            app: The main application instance.
+        """
         self.app = app
 
     def on_host_selected(self, _event):
+        """Handles host selection from history, including clearing history.
+
+        Args:
+            _event: The Tkinter event object.
+        """
         if self.app.host_var.get() == "<Clear History>":
             self.app.host_history.clear()
             self.app.host_combo["values"] = []
@@ -21,6 +39,11 @@ class ConnectionController:
             self.app.log("[INFO] Host history cleared.")
 
     def refresh_connection_state(self, *, notify_on_drop: bool = False):
+        """Checks SSH connection status and updates UI buttons and status.
+
+        Args:
+            notify_on_drop: If True, logs a warning if the connection was lost.
+        """
         connected = self.app.ssh.is_connected()
         was_connecting = self.app.is_connecting
         self.app._set_connected_ui(connected)
@@ -28,7 +51,10 @@ class ConnectionController:
             self.app.log("[WARN] SSH session is no longer active.")
 
     def start_connection_monitor(self):
-        """Poll connection state through Tk's event loop, where UI updates are safe."""
+        """Poll connection state through Tk's event loop.
+
+        Updates the UI periodically to reflect the current SSH connection state.
+        """
         def poll():
             was_connected = self.app.status_var.get() == "Connected"
             self.refresh_connection_state(notify_on_drop=was_connected)
@@ -37,6 +63,11 @@ class ConnectionController:
         self.app.after(1500, poll)
 
     def connect(self):
+        """Initiates a background SSH connection attempt.
+
+        Validates inputs, updates host history, and spawns a worker thread
+        to perform the network connection.
+        """
         inputs = self.app._get_connection_inputs()
         if inputs is None:
             return
@@ -100,6 +131,7 @@ class ConnectionController:
         threading.Thread(target=worker, daemon=True).start()
 
     def disconnect(self):
+        """Closes the current SSH connection and resets UI state."""
         self.app.log("Disconnecting...")
         try:
             self.app.ssh.disconnect()
@@ -111,6 +143,11 @@ class ConnectionController:
             self.app.log("[OK] Disconnected.")
 
     def test_connection(self):
+        """Tests connection parameters without affecting the primary session.
+
+        Spawns a background thread to attempt a connection using a temporary
+        SSHManager instance.
+        """
         self.refresh_connection_state()
         if self.app.ssh.is_connected():
             messagebox.showinfo("Connected", "Already connected to SSH server.")

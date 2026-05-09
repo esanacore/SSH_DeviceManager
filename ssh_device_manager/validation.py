@@ -1,5 +1,7 @@
-"""
-Connection form validation helpers.
+"""Connection form validation helpers.
+
+This module provides functions to validate and normalize user inputs
+from the connection configuration form.
 """
 
 import tkinter as tk
@@ -10,7 +12,17 @@ from typing import List, Optional, Tuple
 def parse_int_input(
     value: str, label: str, minimum: int = 1, maximum: Optional[int] = None
 ) -> Optional[int]:
-    """Parse and validate integer form input, showing a user-facing error on failure."""
+    """Parse and validate integer form input, showing a user-facing error on failure.
+
+    Args:
+        value: The raw string value from the entry field.
+        label: A descriptive name for the field (e.g., "Port").
+        minimum: The minimum allowed integer value. Defaults to 1.
+        maximum: The maximum allowed integer value. Defaults to None.
+
+    Returns:
+        The parsed integer if valid, otherwise None.
+    """
     text = value.strip()
     try:
         parsed = int(text)
@@ -36,7 +48,19 @@ def get_connection_inputs(
     """Validate the current connection form and return normalized values.
 
     Each missing or invalid field is reported individually so the user
-    knows exactly what to fix.  Returns ``None`` when validation fails.
+    knows exactly what to fix.
+
+    Args:
+        host_var: Tkinter Variable for the host field.
+        port_var: Tkinter Variable for the port field.
+        user_var: Tkinter Variable for the username field.
+        pass_var: Tkinter Variable for the password field.
+        timeout_var: Tkinter Variable for the timeout field.
+        log: A callable that accepts a string to log messages.
+
+    Returns:
+        A tuple of (host, port, user, password, timeout) if all inputs are valid,
+        otherwise None.
     """
     errors: List[str] = []
 
@@ -86,6 +110,15 @@ def get_connection_inputs(
 
 
 def get_host_key_mode(host_key_mode_var) -> str:
+    """Normalize and validate the host key verification mode.
+
+    Args:
+        host_key_mode_var: Tkinter Variable for the host key mode field.
+
+    Returns:
+        The normalized mode string ('strict', 'warning', or 'auto').
+        Defaults to 'warning' if the input is invalid.
+    """
     mode = host_key_mode_var.get().strip().lower()
     if mode not in {"strict", "warning", "auto"}:
         return "warning"

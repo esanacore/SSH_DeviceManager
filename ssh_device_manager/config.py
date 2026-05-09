@@ -1,5 +1,7 @@
-"""
-Application configuration persistence (profiles, settings).
+"""Application configuration persistence (profiles, settings).
+
+This module handles loading and saving the application's persistent
+configuration, including connection profiles.
 """
 
 import json
@@ -8,12 +10,26 @@ from typing import Optional
 
 
 def default_app_config() -> dict:
-    """Return the persisted config shape expected by the rest of the app."""
+    """Return the persisted config shape expected by the rest of the app.
+
+    Returns:
+        A dictionary with default configuration values (e.g., empty profiles).
+    """
     return {"profiles": {}}
 
 
 def load_app_config(path: str) -> dict:
-    """Load app config from *path*, returning a sanitized default-compatible dict."""
+    """Load app config from a file, returning a sanitized default-compatible dict.
+
+    If the file does not exist or is malformed, a default configuration is
+    created and saved.
+
+    Args:
+        path: Path to the configuration JSON file.
+
+    Returns:
+        A dictionary containing the loaded and sanitized configuration.
+    """
     if not os.path.exists(path):
         config = default_app_config()
         save_app_config(path, config)
@@ -38,6 +54,11 @@ def load_app_config(path: str) -> dict:
 
 
 def save_app_config(path: str, config: dict):
-    """Persist *config* as JSON to *path*."""
+    """Persist the configuration dictionary as JSON to the specified path.
+
+    Args:
+        path: Path where the configuration should be saved.
+        config: The configuration dictionary to persist.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(config, handle, indent=2)

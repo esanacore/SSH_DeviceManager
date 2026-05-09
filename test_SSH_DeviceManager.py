@@ -1587,7 +1587,7 @@ if __name__ == '__main__':
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# OutputManager unit tests  (output.py: 40 % → 80 %+)
+# OutputManager unit tests  (output.py: 40 % → 100 %)
 # ---------------------------------------------------------------------------
 
 class TestOutputManager(unittest.TestCase):
@@ -1690,7 +1690,7 @@ class TestOutputManager(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# ToolTip unit tests  (models.py: 49 % → 90 %+)
+# ToolTip unit tests  (models.py: 49 % → 100 %)
 # ---------------------------------------------------------------------------
 
 class TestToolTip(unittest.TestCase):
@@ -1764,7 +1764,7 @@ class TestToolTip(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# ActionController unit tests  (actions.py: 32 % → 70 %+)
+# ActionController unit tests  (actions.py: 32 % → 44 %)
 # ---------------------------------------------------------------------------
 
 class TestActionControllerPerformUpload(unittest.TestCase):
@@ -1838,7 +1838,7 @@ class TestActionControllerPerformUpload(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# SectionsController unit tests  (sections.py: 28 % → 70 %+)
+# SectionsController unit tests  (sections.py: 28 % → 100 %)
 # ---------------------------------------------------------------------------
 
 class TestSectionsController(unittest.TestCase):
@@ -1961,7 +1961,7 @@ class TestAppConfigMissingFile(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# ConnectionController gap tests  (connection.py: 89 % → 95 %+)
+# ConnectionController gap tests  (connection.py: 89 % → 99 %)
 # ---------------------------------------------------------------------------
 
 class TestConnectionControllerGaps(unittest.TestCase):
@@ -2042,7 +2042,7 @@ class TestConnectionControllerGaps(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# ProfileController gap tests  (profiles.py: 91 % → 95 %+)
+# ProfileController gap tests  (profiles.py: 91 % → 98 %)
 # ---------------------------------------------------------------------------
 
 class TestProfileControllerGaps(unittest.TestCase):

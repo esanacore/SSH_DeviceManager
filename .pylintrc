@@ -1,0 +1,32 @@
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    protected-access,
+    import-outside-toplevel,
+    trailing-whitespace,
+    unused-argument,
+    multiple-statements,
+    unused-variable,
+    invalid-name,
+    redefined-outer-name,
+    reimported,
+    no-member,
+    multiple-imports,
+    line-too-long,
+    wrong-import-position,
+    unused-import,
+    broad-exception-caught,
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-many-instance-attributes,
+    unnecessary-lambda-assignment,
+    too-few-public-methods,
+    too-many-statements,
+    too-many-locals,
+    too-many-lines,
+    missing-final-newline
+
+[TYPECHECK]
+ignored-modules=tkinter

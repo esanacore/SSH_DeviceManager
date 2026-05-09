@@ -589,6 +589,14 @@ class TestSSHGuiApp(unittest.TestCase):
         app.output_text.delete.assert_called_with("1.0", "end")
         app.output_text.configure.assert_any_call(state="disabled")
 
+    def test_append_output_uses_output_manager_public_append(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.output_manager = MagicMock()
+
+        app._append_output("line")
+
+        app.output_manager.append.assert_called_once_with("line")
+
     @patch('SSH_DeviceManager.threading.Thread')
     def test_on_connect_double_click_guard(self, mock_thread):
         app = SSH_DeviceManager.SSHGuiApp(init_ui=False)

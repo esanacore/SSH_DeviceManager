@@ -1,5 +1,8 @@
-"""
-Loads button section definitions from a JSON file.
+"""Loads button section definitions from a JSON file.
+
+This module provides the logic for parsing a JSON configuration file
+into ButtonSection and ActionButton objects, which are then used to
+populate the application's Actions panel.
 """
 
 import json
@@ -19,15 +22,34 @@ def load_sections_from_file(
     prompt_and_run_custom_command: Callable[[], None],
     fallback: Callable[[], List[ButtonSection]],
 ) -> List[ButtonSection]:
-    """
-    Load section/button definitions from a JSON file.
+    """Load section/button definitions from a JSON file.
 
-    Handler callbacks are injected so this module has no dependency on the app class.
-    Returns *fallback()* on any error.
+    Handler callbacks are injected so this module has no dependency on the
+    main application class. If the file is missing or malformed, the
+    fallback function is called.
+
+    Args:
+        path: Path to the JSON sections file.
+        log: Callable for logging messages.
+        run_ssh_command: Callable for executing an SSH command.
+        upload_config_template: Callable for the upload template workflow.
+        send_file_scp: Callable for the SCP file transfer workflow.
+        prompt_and_run_custom_command: Callable for the custom command dialog.
+        fallback: Callable that returns a default list of ButtonSections.
+
+    Returns:
+        A list of loaded ButtonSection objects, or the results of fallback().
     """
 
     def resolve_handler(cmd: str) -> Callable[[], None]:
-        """Map JSON command tokens to callables the Tk button can invoke."""
+        """Map JSON command tokens to callables the Tk button can invoke.
+
+        Args:
+            cmd: The command string or reserved token from the JSON.
+
+        Returns:
+            A callable that performs the requested action.
+        """
         if not cmd:
             return lambda: log("[WARN] No command assigned to this button.")
 

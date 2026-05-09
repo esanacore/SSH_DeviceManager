@@ -1,11 +1,30 @@
+"""UI-based customizer for sections.json.
+
+This module provides a standalone Tkinter application to visually edit
+the button sections and actions defined in the sections.json file.
+"""
+
 import json
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 
 CONFIG_PATH = "sections.json"
 
+
 class CustomizerApp(tk.Tk):
+    """Tkinter application for customizing SSH Device Manager button sections.
+
+    Attributes:
+        config_data: The dictionary representing the sections configuration.
+        section_list: Listbox displaying defined sections.
+        action_list: Listbox displaying actions within the selected section.
+        title_var: Tkinter StringVar for the section title entry.
+        max_var: Tkinter IntVar for the section max buttons spinbox.
+        preview_area: Frame for rendering the live preview of the UI layout.
+    """
+
     def __init__(self):
+        """Initializes the CustomizerApp and loads the configuration."""
         super().__init__()
         self.title("SSH Device Manager Customizer")
         self.geometry("900x600")
@@ -14,6 +33,7 @@ class CustomizerApp(tk.Tk):
         self.load_config(CONFIG_PATH)
 
     def _build_ui(self):
+        """Builds the customizer's main UI components."""
         left = ttk.Frame(self)
         left.pack(side="left", fill="y", padx=8, pady=8)
         right = ttk.Frame(self)
@@ -61,37 +81,59 @@ class CustomizerApp(tk.Tk):
         self.preview_area.pack(fill="both", expand=True, padx=4, pady=4)
 
     def refresh_lists(self):
+        """Refreshes the section and action listboxes from current config data."""
         self.section_list.delete(0, "end")
         for s in self.config_data.get("sections", []):
             self.section_list.insert("end", s.get("title", "Untitled"))
         self.action_list.delete(0, "end")
 
     def on_select_section(self, _e=None):
+        """Handles selection of a section from the listbox.
+
+        Args:
+            _e: The Tkinter event object. Defaults to None.
+        """
         sel = self.section_index()
         if sel is None:
             return
         section = self.config_data["sections"][sel]
-        self.title_var.set(section.get("title",""))
-        self.max_var.set(section.get("max_buttons",6))
+        self.title_var.set(section.get("title", ""))
+        self.max_var.set(section.get("max_buttons", 6))
         self.action_list.delete(0, "end")
         for a in section.get("actions", []):
-            label = a.get("label","")
+            label = a.get("label", "")
             en = "" if a.get("enabled", True) else " (disabled)"
             self.action_list.insert("end", label + en)
         self.build_preview()
 
     def on_select_action(self, _e=None):
+        """Placeholder for action selection event.
+
+        Args:
+            _e: The Tkinter event object. Defaults to None.
+        """
         pass
 
     def section_index(self):
+        """Returns the currently selected section index.
+
+        Returns:
+            The integer index of the selected section, or None.
+        """
         sel = self.section_list.curselection()
         return sel[0] if sel else None
 
     def action_index(self):
+        """Returns the currently selected action index.
+
+        Returns:
+            The integer index of the selected action, or None.
+        """
         sel = self.action_list.curselection()
         return sel[0] if sel else None
 
     def add_section(self):
+        """Prompts for a new section title and adds it to the configuration."""
         title = simpledialog.askstring("Section Title", "Enter section title:", parent=self)
         if not title:
             return
@@ -101,6 +143,7 @@ class CustomizerApp(tk.Tk):
         self.on_select_section()
 
     def remove_section(self):
+        """Removes the currently selected section from the configuration."""
         idx = self.section_index()
         if idx is None:
             return
@@ -111,6 +154,7 @@ class CustomizerApp(tk.Tk):
         self.build_preview()
 
     def update_section(self):
+        """Updates the selected section's title and max buttons from UI fields."""
         idx = self.section_index()
         if idx is None:
             return
@@ -121,6 +165,7 @@ class CustomizerApp(tk.Tk):
         self.build_preview()
 
     def add_action(self):
+        """Prompts for a new action and adds it to the selected section."""
         idx = self.section_index()
         if idx is None:
             messagebox.showwarning("No section", "Select a section first.")
@@ -129,7 +174,11 @@ class CustomizerApp(tk.Tk):
         label = simpledialog.askstring("Action Label", "Button label:", parent=self)
         if not label:
             return
-        command = simpledialog.askstring("Command", "Command string or special token (e.g. run:show version or __upload_template__):", parent=self)
+        command = simpledialog.askstring(
+            "Command",
+            "Command string or special token (e.g. run:show version or __upload_template__):",
+            parent=self
+        )
         if command is None:
             return
         action = {"label": label, "enabled": True, "command": command, "tooltip": ""}
@@ -137,6 +186,7 @@ class CustomizerApp(tk.Tk):
         self.on_select_section()
 
     def remove_action(self):
+        """Removes the selected action from the current section."""
         sidx = self.section_index()
         aidx = self.action_index()
         if sidx is None or aidx is None:
@@ -146,24 +196,26 @@ class CustomizerApp(tk.Tk):
         self.build_preview()
 
     def edit_action(self):
+        """Opens dialogs to edit the details of the selected action button."""
         sidx = self.section_index()
         aidx = self.action_index()
         if sidx is None or aidx is None:
             return
         action = self.config_data["sections"][sidx]["actions"][aidx]
-        label = simpledialog.askstring("Action Label", "Button label:", initialvalue=action.get("label",""), parent=self)
+        label = simpledialog.askstring("Action Label", "Button label:", initialvalue=action.get("label", ""), parent=self)
         if label is None:
             return
-        command = simpledialog.askstring("Command", "Command string:", initialvalue=action.get("command",""), parent=self)
+        command = simpledialog.askstring("Command", "Command string:", initialvalue=action.get("command", ""), parent=self)
         if command is None:
             return
-        tooltip = simpledialog.askstring("Tooltip", "Tooltip text:", initialvalue=action.get("tooltip",""), parent=self)
+        tooltip = simpledialog.askstring("Tooltip", "Tooltip text:", initialvalue=action.get("tooltip", ""), parent=self)
         enabled = messagebox.askyesno("Enabled", "Should this button be enabled?", parent=self)
         action.update({"label": label, "command": command, "tooltip": tooltip or "", "enabled": enabled})
         self.on_select_section()
         self.build_preview()
 
     def build_preview(self):
+        """Renders a live visual preview of the button sections and actions."""
         # Clear preview
         for c in self.preview_area.winfo_children():
             c.destroy()
@@ -173,20 +225,25 @@ class CustomizerApp(tk.Tk):
         for i, sec in enumerate(sections):
             frame = ttk.Frame(container, relief="groove", padding=6)
             frame.grid(row=0, column=i, sticky="n", padx=6, pady=6)
-            ttk.Label(frame, text=sec.get("title",""), font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            ttk.Label(frame, text=sec.get("title", ""), font=("Segoe UI", 10, "bold")).pack(anchor="w")
             actions = [a for a in sec.get("actions", []) if a.get("enabled", True)]
             maxb = sec.get("max_buttons", len(actions))
             if len(actions) > maxb:
                 actions = actions[:maxb]
             for a in actions:
                 # Buttons in preview do nothing; show tooltip in label
-                b = ttk.Button(frame, text=a.get("label",""), width=24)
+                b = ttk.Button(frame, text=a.get("label", ""), width=24)
                 b.pack(fill="x", pady=3)
         # make grid columns expand
         for i in range(len(sections)):
             container.columnconfigure(i, weight=1)
 
     def load_config(self, path):
+        """Loads configuration from a JSON file.
+
+        Args:
+            path: Path to the JSON sections file.
+        """
         try:
             with open(path, "r", encoding="utf-8") as f:
                 self.config_data = json.load(f)
@@ -196,17 +253,24 @@ class CustomizerApp(tk.Tk):
         self.build_preview()
 
     def load_config_dialog(self):
-        p = filedialog.askopenfilename(filetypes=[("JSON files","*.json"),("All files","*.*")])
+        """Opens a file dialog to load a sections configuration file."""
+        p = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
         if p:
             self.load_config(p)
 
     def save_config(self):
-        p = filedialog.asksaveasfilename(defaultextension=".json", initialfile=CONFIG_PATH, filetypes=[("JSON","*.json")])
+        """Opens a file dialog to save the current configuration to a JSON file."""
+        p = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            initialfile=CONFIG_PATH,
+            filetypes=[("JSON", "*.json")]
+        )
         if not p:
             return
         with open(p, "w", encoding="utf-8") as f:
             json.dump(self.config_data, f, indent=2)
         messagebox.showinfo("Saved", f"Config saved to {p}")
+
 
 if __name__ == "__main__":
     app = CustomizerApp()

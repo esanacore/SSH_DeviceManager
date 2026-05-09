@@ -1,16 +1,32 @@
-"""Profile persistence orchestration."""
+"""Profile persistence orchestration.
+
+This module contains the ProfileController which manages connection profiles
+for the application.
+"""
 
 from tkinter import messagebox
 
 
 class ProfileController:
-    """Owns profile CRUD behavior for the connection form."""
+    """Owns profile CRUD behavior for the connection form.
+
+    Attributes:
+        app: The main application instance (SSHGuiApp).
+    """
 
     def __init__(self, app):
+        """Initializes the ProfileController.
+
+        Args:
+            app: The main application instance.
+        """
         self.app = app
 
     def refresh_profile_list(self):
-        """Refresh the combo box while preserving the current selection when possible."""
+        """Refresh the profile combo box values from the application config.
+
+        Preserves the current selection when possible.
+        """
         profile_names = sorted(self.app.app_config.get("profiles", {}).keys())
         self.app.profile_combo["values"] = profile_names
         current = self.app.profile_select_var.get().strip()
@@ -22,7 +38,10 @@ class ProfileController:
             self.app.profile_select_var.set("")
 
     def save_profile(self):
-        """Persist reusable connection settings without storing the password."""
+        """Persist reusable connection settings to the application config.
+
+        Note: Passwords are intentionally omitted from saved profiles.
+        """
         profile_name = (
             self.app.profile_name_var.get().strip()
             or self.app.profile_select_var.get().strip()

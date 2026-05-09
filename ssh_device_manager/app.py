@@ -1,5 +1,4 @@
-"""
-SSHGuiApp - Main Tkinter application for the SSH Device Manager.
+"""SSHGuiApp - Main Tkinter application for the SSH Device Manager.
 
 This is the orchestrator: it imports modules for models, SSH, themes,
 config, validation, sections loading, and output, then wires them into
@@ -28,17 +27,38 @@ from .validation import parse_int_input, get_connection_inputs, get_host_key_mod
 
 
 class SSHGuiApp(tk.Tk):
-    """
-    Tkinter App:
-    - Top: connection fields + connect/disconnect + settings
-    - Middle: button sections (with vertical separators)
-    - Bottom: terminal output pane
+    """The main SSH Device Manager Tkinter application.
+
+    This class manages the UI layout and state, delegating logic to various
+    controllers and managers.
+
+    Attributes:
+        THEMES: A dictionary containing available UI themes.
+        app_config_path: Path to the application configuration file.
+        app_config: The loaded application configuration dictionary.
+        ssh: The SSHManager instance for managing remote connections.
+        command_history: List of recently run SSH commands.
+        history_index: Current index in the command history.
+        is_connecting: Flag indicating if a connection attempt is in progress.
+        host_history: List of recently used hostnames/IPs.
+        current_theme: Tkinter StringVar tracking the active theme name.
+        connection_controller: Logic for SSH connection management.
+        action_controller: Logic for command execution and file transfers.
+        profile_controller: Logic for managing connection profiles.
+        sections_controller: Logic for loading and building UI button sections.
+        log_queue: Queue for thread-safe logging to the UI.
+        output_manager: Manages the terminal output pane.
     """
 
     THEMES = THEMES
 
     def __init__(self, init_ui: bool = True):
-        """Create the app, optionally skipping real widgets for headless tests."""
+        """Initializes the SSHGuiApp.
+
+        Args:
+            init_ui: If True, builds the UI widgets. If False, initializes
+                state for headless testing. Defaults to True.
+        """
         super().__init__()
         self.app_config_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -141,13 +161,16 @@ class SSHGuiApp(tk.Tk):
         self.sections = self.load_sections_from_file(self.sections_path)
 
     def _initialize_output_manager(self):
+        """Creates the OutputManager and syncs the log queue."""
         self.output_manager = OutputManager(self.output_text)
         self.log_queue = self.output_manager.log_queue
 
     def _sync_output_manager_widget(self):
+        """Ensures the OutputManager is using the current output text widget."""
         self.output_manager.output_text = self.output_text
 
     def _build_menu(self):
+        """Constructs the application's top menu bar."""
         menubar = tk.Menu(self)
         self.config(menu=menubar)
 
@@ -177,6 +200,7 @@ class SSHGuiApp(tk.Tk):
         )
 
     def _build_ui(self):
+        """Builds the main UI layout (connection, actions, settings, output)."""
         self.columnconfigure(0, weight=1)
         self.rowconfigure(3, weight=1)
 
@@ -274,6 +298,11 @@ class SSHGuiApp(tk.Tk):
     # -------------------------
 
     def apply_theme(self, theme_name: str):
+        """Applies a theme to the entire application UI.
+
+        Args:
+            theme_name: The name of the theme to apply.
+        """
         theme = self.THEMES.get(theme_name, self.THEMES["Default"])
 
         btn_bg = theme.get("btn_bg", theme["bg"])
@@ -306,7 +335,15 @@ class SSHGuiApp(tk.Tk):
         self._apply_theme_to_children(self, theme, btn_bg, border, label_fg)
 
     def _apply_theme_to_children(self, parent, theme, btn_bg, border, label_fg):
-        """Keep classic Tk widgets consistent with ttk-managed theme colors."""
+        """Recursively applies theme colors to classic Tk widgets.
+
+        Args:
+            parent: The parent widget to start recursion from.
+            theme: The theme dictionary.
+            btn_bg: Button background color.
+            border: Border color.
+            label_fg: Label foreground color.
+        """
         for child in parent.winfo_children():
             cls_name = child.winfo_class()
             try:
@@ -359,72 +396,129 @@ class SSHGuiApp(tk.Tk):
             self._apply_theme_to_children(child, theme, btn_bg, border, label_fg)
 
     def load_sections_from_file(self, path: str) -> List[ButtonSection]:
+        """Loads button sections from a file.
+
+        Args:
+            path: Path to the sections definition file.
+
+        Returns:
+            A list of loaded ButtonSection objects.
+        """
         return self.sections_controller.load_sections_from_file(path)
 
     def reload_sections(self, path: str = DEFAULT_SECTIONS_FILE):
+        """Reloads sections from the specified file and rebuilds the UI.
+
+        Args:
+            path: Path to the sections file. Defaults to DEFAULT_SECTIONS_FILE.
+        """
         self.sections_controller.reload_sections(path)
 
     def open_sections_file(self, default_path: str = DEFAULT_SECTIONS_FILE):
+        """Opens the sections file in the OS's default text editor.
+
+        Args:
+            default_path: Default path to use. Defaults to DEFAULT_SECTIONS_FILE.
+        """
         self.sections_controller.open_sections_file(default_path)
 
     def _define_sections(self) -> List[ButtonSection]:
+        """Returns the fallback/default button sections.
+
+        Returns:
+            A list of default ButtonSection objects.
+        """
         return self.sections_controller.define_sections()
 
     def _build_button_sections(self, sections: List[ButtonSection]):
+        """Builds the UI widgets for the provided button sections.
+
+        Args:
+            sections: A list of ButtonSection objects to render.
+        """
         self.sections_controller.build_button_sections(sections)
 
     def on_host_selected(self, _event):
+        """Handles selection of a host from the history combobox.
+
+        Args:
+            _event: The Tkinter event object.
+        """
         self.connection_controller.on_host_selected(_event)
 
     def _refresh_profile_list(self):
+        """Refreshes the profile selection combobox from the app config."""
         self.profile_controller.refresh_profile_list()
 
     def save_profile(self):
+        """Saves the current connection details as a profile."""
         self.profile_controller.save_profile()
 
     def load_selected_profile(self):
+        """Loads the connection details from the selected profile into the UI."""
         self.profile_controller.load_selected_profile()
 
     def delete_selected_profile(self):
+        """Deletes the currently selected profile from the app config."""
         self.profile_controller.delete_selected_profile()
 
     def _parse_int_input(self, value: str, label: str, minimum: int = 1, maximum: Optional[int] = None) -> Optional[int]:
+        """Convenience wrapper for parse_int_input validation helper."""
         return parse_int_input(value, label, minimum, maximum)
 
     def _get_connection_inputs(self):
+        """Convenience wrapper for get_connection_inputs validation helper."""
         return get_connection_inputs(
             self.host_var, self.port_var, self.user_var, self.pass_var, self.timeout_var,
             log=self.log,
         )
 
     def _get_host_key_mode(self) -> str:
+        """Convenience wrapper for get_host_key_mode validation helper."""
         return get_host_key_mode(self.host_key_mode_var)
 
     def _load_app_config(self) -> dict:
+        """Loads the application configuration from disk."""
         return app_config_mod.load_app_config(self.app_config_path)
 
     def _save_app_config(self):
+        """Saves the current application configuration to disk."""
         app_config_mod.save_app_config(self.app_config_path, self.app_config)
 
     def _create_temp_ssh_manager(self):
+        """Creates a temporary SSHManager instance for testing connections."""
         return SSHManager()
 
     def _refresh_connection_state(self, *, notify_on_drop: bool = False):
+        """Checks connection status and updates UI accordingly.
+
+        Args:
+            notify_on_drop: If True, logs a warning if the connection was lost.
+        """
         self.connection_controller.refresh_connection_state(notify_on_drop=notify_on_drop)
 
     def _start_connection_monitor(self):
+        """Starts the periodic background connection status monitor."""
         self.connection_controller.start_connection_monitor()
 
     def on_connect(self):
+        """Initiates a connection attempt using the UI values."""
         self.connection_controller.connect()
 
     def on_disconnect(self):
+        """Closes the active SSH connection."""
         self.connection_controller.disconnect()
 
     def test_connection(self):
+        """Tests the SSH connection without fully establishing it."""
         self.connection_controller.test_connection()
 
     def _set_connected_ui(self, connected: bool):
+        """Updates UI elements based on the connection state.
+
+        Args:
+            connected: True if currently connected, False otherwise.
+        """
         def apply():
             self.status_var.set("Connected" if connected else "Disconnected")
             self.connect_btn.configure(state="disabled" if connected else "normal")
@@ -433,21 +527,40 @@ class SSHGuiApp(tk.Tk):
         self.after_idle(apply)
 
     def run_ssh_command(self, command: str):
+        """Executes an SSH command in the background.
+
+        Args:
+            command: The command string to execute.
+        """
         self.action_controller.run_ssh_command(command)
 
     def prompt_and_run_custom_command(self):
+        """Opens a dialog to prompt the user for a custom command to run."""
         self.action_controller.prompt_and_run_custom_command()
 
     def upload_config_template(self, remote_path: str = "/tmp/uploaded_config.txt"):
+        """Prompts for a file to upload as a config template.
+
+        Args:
+            remote_path: Destination path on the remote device.
+        """
         self.action_controller.upload_config_template(remote_path)
 
     def send_file_scp(self):
+        """Prompts for a file and a destination to upload via SCP."""
         self.action_controller.send_file_scp()
 
     def _perform_upload(self, local_path: str, remote_path: str):
+        """Internal helper to execute the file upload background thread.
+
+        Args:
+            local_path: Path to the local file.
+            remote_path: Path on the remote device.
+        """
         self.action_controller.perform_upload(local_path, remote_path)
 
     def show_help_dialog(self):
+        """Displays the application's help/about dialog."""
         help_text = """
 SSH Device Manager
 
@@ -473,27 +586,41 @@ Tips:
         messagebox.showinfo("About / Usage", help_text.strip())
 
     def log(self, text: str):
+        """Appends a timestamped message to the terminal output pane.
+
+        Args:
+            text: The message to log.
+        """
         self.output_manager.log(text)
 
     def _start_log_poller(self):
+        """Starts the log queue poller for thread-safe UI updates."""
         self._sync_output_manager_widget()
         self.output_manager.start_poller(self)
 
     def _append_output(self, msg: str):
+        """Directly appends text to the terminal output pane.
+
+        Args:
+            msg: The message to append.
+        """
         self._sync_output_manager_widget()
         self.output_manager.append(msg)
 
     def clear_output(self):
+        """Clears all text from the terminal output pane."""
         self._sync_output_manager_widget()
         self.output_manager.clear()
 
     def copy_output(self):
+        """Copies the contents of the terminal output pane to the clipboard."""
         text = self.output_text.get("1.0", "end-1c")
         self.clipboard_clear()
         self.clipboard_append(text)
         self.log("[OK] Output copied to clipboard.")
 
     def save_output(self):
+        """Prompts the user to save the terminal output to a text file."""
         text = self.output_text.get("1.0", "end-1c")
         if not text.strip():
             messagebox.showwarning("Empty Output", "Nothing to save.")
@@ -512,7 +639,20 @@ Tips:
                 self.log(f"[ERROR] Failed to save output: {exc}")
 
     def _get_mtime(self, path: str):
+        """Returns the modification time of a file.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            The modification time as a float, or 0 if the file doesn't exist.
+        """
         return self.sections_controller.get_mtime(path)
 
     def _start_sections_watcher(self, interval_ms: int = 1000):
+        """Starts the periodic watcher for the sections file.
+
+        Args:
+            interval_ms: The polling interval in milliseconds. Defaults to 1000.
+        """
         self.sections_controller.start_sections_watcher(interval_ms)

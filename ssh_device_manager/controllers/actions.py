@@ -1,4 +1,8 @@
-"""Action-related UI orchestration."""
+"""Action-related UI orchestration.
+
+This module contains the ActionController which manages SSH command
+execution and file transfer workflows.
+"""
 
 import threading
 import tkinter as tk
@@ -8,12 +12,28 @@ from ..constants import COMMAND_HISTORY_LIMIT
 
 
 class ActionController:
-    """Owns SSH command execution and file-transfer flows."""
+    """Owns SSH command execution and file-transfer flows.
+
+    Attributes:
+        app: The main application instance (SSHGuiApp).
+    """
 
     def __init__(self, app):
+        """Initializes the ActionController.
+
+        Args:
+            app: The main application instance.
+        """
         self.app = app
 
     def run_ssh_command(self, command: str):
+        """Executes an SSH command in a background thread.
+
+        Updates the command history and logs the output to the terminal pane.
+
+        Args:
+            command: The command string to execute.
+        """
         self.app._refresh_connection_state()
         if not self.app.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
@@ -39,6 +59,10 @@ class ActionController:
         threading.Thread(target=worker, daemon=True).start()
 
     def prompt_and_run_custom_command(self):
+        """Opens a dialog to prompt for a custom command and executes it.
+
+        The dialog includes basic command history navigation with arrow keys.
+        """
         if not self.app.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
             return
@@ -113,6 +137,12 @@ class ActionController:
         )
 
     def upload_config_template(self, remote_path: str = "/tmp/uploaded_config.txt"):
+        """Prompts for a local file and uploads it to a predefined remote path.
+
+        Args:
+            remote_path: Destination path on the remote device. Defaults to
+                "/tmp/uploaded_config.txt".
+        """
         self.app._refresh_connection_state()
         if not self.app.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
@@ -135,6 +165,7 @@ class ActionController:
         threading.Thread(target=worker, daemon=True).start()
 
     def send_file_scp(self):
+        """Prompts for a local file and a remote path, then uploads the file."""
         if not self.app.ssh.is_connected():
             messagebox.showwarning("Not Connected", "Please connect over SSH first.")
             return
@@ -165,6 +196,12 @@ class ActionController:
         tk.Button(dialog, text="Upload", command=on_confirm).pack(pady=10)
 
     def perform_upload(self, local_path: str, remote_path: str):
+        """Executes the file upload in a background thread.
+
+        Args:
+            local_path: Path to the local file.
+            remote_path: Destination path on the remote device.
+        """
         self.app.log(f"SCP Upload:\n  local:  {local_path}\n  remote: {remote_path}")
 
         # File transfers may take time; keep the UI responsive during upload.

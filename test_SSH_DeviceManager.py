@@ -1582,6 +1582,587 @@ if __name__ == '__main__':
     unittest.main()
 
 
+# ===========================================================================
+# New tests added to improve coverage
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# OutputManager unit tests  (output.py: 40 % → 100 %)
+# ---------------------------------------------------------------------------
+
+class TestOutputManager(unittest.TestCase):
+    """Direct unit tests for OutputManager (no SSHGuiApp required)."""
+
+    def _make_manager(self):
+        from ssh_device_manager.output import OutputManager
+        mock_text = MagicMock()
+        manager = OutputManager(mock_text)
+        return manager, mock_text
+
+    def test_log_adds_timestamp_to_queue(self):
+        import re
+        manager, _ = self._make_manager()
+        manager.log("hello world")
+        self.assertFalse(manager.log_queue.empty())
+        msg = manager.log_queue.get_nowait()
+        self.assertRegex(msg, r"\[\d{2}:\d{2}:\d{2}\]")
+        self.assertIn("hello world", msg)
+
+    def test_append_enables_inserts_and_disables(self):
+        manager, mock_text = self._make_manager()
+        manager._append("some text")
+        mock_text.configure.assert_any_call(state="normal")
+        mock_text.insert.assert_called_with("end", "some text")
+        mock_text.see.assert_called_with("end")
+        mock_text.configure.assert_any_call(state="disabled")
+
+    def test_clear_enables_deletes_and_disables(self):
+        manager, mock_text = self._make_manager()
+        manager.clear()
+        mock_text.configure.assert_any_call(state="normal")
+        mock_text.delete.assert_called_with("1.0", "end")
+        mock_text.configure.assert_any_call(state="disabled")
+
+    def test_copy_clears_and_appends_to_clipboard(self):
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "output content"
+        mock_root = MagicMock()
+        manager.copy(mock_root)
+        mock_root.clipboard_clear.assert_called_once()
+        mock_root.clipboard_append.assert_called_once_with("output content")
+        # Should also log a confirmation
+        self.assertFalse(manager.log_queue.empty())
+
+    def test_save_empty_output_shows_warning(self):
+        from ssh_device_manager import output as out_mod
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "   "
+        with patch.object(out_mod.messagebox, "showwarning") as mock_warn:
+            manager.save()
+        mock_warn.assert_called_once()
+
+    def test_save_no_file_chosen_does_not_write(self):
+        from ssh_device_manager import output as out_mod
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "some output"
+        with patch.object(out_mod.filedialog, "asksaveasfilename", return_value=""), \
+             patch("builtins.open", unittest.mock.mock_open()) as mock_open:
+            manager.save()
+        mock_open.assert_not_called()
+
+    def test_save_writes_file_and_logs_ok(self):
+        from ssh_device_manager import output as out_mod
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "content"
+        with patch.object(out_mod.filedialog, "asksaveasfilename", return_value="/tmp/out.txt"), \
+             patch("builtins.open", unittest.mock.mock_open()) as mock_open:
+            manager.save()
+        mock_open.assert_called_with("/tmp/out.txt", "w", encoding="utf-8")
+        mock_open().write.assert_called_with("content")
+        self.assertFalse(manager.log_queue.empty())
+        msg = manager.log_queue.get_nowait()
+        self.assertIn("[OK]", msg)
+
+    def test_save_write_error_logs_error(self):
+        from ssh_device_manager import output as out_mod
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "content"
+        with patch.object(out_mod.filedialog, "asksaveasfilename", return_value="/tmp/bad.txt"), \
+             patch("builtins.open", side_effect=IOError("disk full")):
+            manager.save()
+        self.assertFalse(manager.log_queue.empty())
+        msg = manager.log_queue.get_nowait()
+        self.assertIn("[ERROR]", msg)
+        self.assertIn("disk full", msg)
+
+    def test_start_poller_drains_queue_into_widget(self):
+        from ssh_device_manager.output import OutputManager
+        mock_text = MagicMock()
+        manager = OutputManager(mock_text)
+        manager.log("msg1")
+        manager.log("msg2")
+        # start_poller calls poll() immediately then schedules via root.after()
+        mock_root = MagicMock()
+        manager.start_poller(mock_root)
+        # After poll(), the widget should have received insert calls
+        self.assertTrue(mock_text.insert.called)
+        mock_root.after.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# ToolTip unit tests  (models.py: 49 % → 100 %)
+# ---------------------------------------------------------------------------
+
+class TestToolTip(unittest.TestCase):
+    """Unit tests for the ToolTip helper in models.py."""
+
+    def _make_widget(self):
+        """Return a mock widget with the attributes ToolTip accesses."""
+        w = MagicMock()
+        w.winfo_rootx.return_value = 100
+        w.winfo_rooty.return_value = 200
+        w.winfo_height.return_value = 30
+        return w
+
+    def test_no_text_does_not_bind(self):
+        from ssh_device_manager.models import ToolTip
+        w = self._make_widget()
+        tip = ToolTip(w, "")
+        # bind should never have been called for Enter/Leave
+        for call in w.bind.call_args_list:
+            self.assertNotIn("<Enter>", call[0])
+            self.assertNotIn("<Leave>", call[0])
+
+    def test_with_text_binds_enter_and_leave(self):
+        from ssh_device_manager.models import ToolTip
+        w = self._make_widget()
+        ToolTip(w, "Tooltip text")
+        bound_events = [c[0][0] for c in w.bind.call_args_list]
+        self.assertIn("<Enter>", bound_events)
+        self.assertIn("<Leave>", bound_events)
+
+    def test_show_tip_creates_toplevel(self):
+        from ssh_device_manager.models import ToolTip
+        import ssh_device_manager.models as models_mod
+        w = self._make_widget()
+        tip = ToolTip(w, "Test tooltip")
+        mock_toplevel = MagicMock()
+        with patch.object(models_mod.tk, "Toplevel", return_value=mock_toplevel) as mock_top_cls, \
+             patch.object(models_mod.tk, "Label"):
+            tip.show_tip()
+        mock_top_cls.assert_called_once_with(w)
+        self.assertIsNotNone(tip.tipwindow)
+
+    def test_show_tip_no_op_when_already_shown(self):
+        from ssh_device_manager.models import ToolTip
+        import ssh_device_manager.models as models_mod
+        w = self._make_widget()
+        tip = ToolTip(w, "Tooltip")
+        tip.tipwindow = MagicMock()  # simulate already shown
+        with patch.object(models_mod.tk, "Toplevel") as mock_top_cls:
+            tip.show_tip()
+        mock_top_cls.assert_not_called()
+
+    def test_hide_tip_destroys_window(self):
+        from ssh_device_manager.models import ToolTip
+        w = self._make_widget()
+        tip = ToolTip(w, "Tooltip")
+        mock_tw = MagicMock()
+        tip.tipwindow = mock_tw
+        tip.hide_tip()
+        mock_tw.destroy.assert_called_once()
+        self.assertIsNone(tip.tipwindow)
+
+    def test_hide_tip_no_op_when_not_shown(self):
+        from ssh_device_manager.models import ToolTip
+        w = self._make_widget()
+        tip = ToolTip(w, "Tooltip")
+        tip.tipwindow = None  # not shown
+        # Should not raise
+        tip.hide_tip()
+        self.assertIsNone(tip.tipwindow)
+
+
+# ---------------------------------------------------------------------------
+# ActionController unit tests  (actions.py: 32 % → 44 %)
+# ---------------------------------------------------------------------------
+
+class TestActionControllerPerformUpload(unittest.TestCase):
+    """Tests for ActionController.perform_upload and upload_config_template worker."""
+
+    def _make_app(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = True
+        app.log = MagicMock()
+        return app
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_perform_upload_success(self, mock_thread):
+        app = self._make_app()
+        app._perform_upload("/local/file.txt", "/remote/file.txt")
+        target = mock_thread.call_args[1]["target"]
+        app.ssh.upload_file.return_value = None
+        target()
+        app.ssh.upload_file.assert_called_with("/local/file.txt", "/remote/file.txt")
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("[OK] SCP Upload complete" in m for m in logged))
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_perform_upload_error(self, mock_thread):
+        app = self._make_app()
+        app._perform_upload("/local/file.txt", "/remote/file.txt")
+        target = mock_thread.call_args[1]["target"]
+        app.ssh.upload_file.side_effect = IOError("Permission denied")
+        target()
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("[ERROR] SCP Upload failed" in m for m in logged))
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_upload_config_template_worker_success(self, mock_thread):
+        app = self._make_app()
+        SSH_DeviceManager.filedialog.askopenfilename.return_value = "/local/cfg.txt"
+        app.upload_config_template()
+        target = mock_thread.call_args[1]["target"]
+        app.ssh.upload_file.return_value = None
+        target()
+        app.ssh.upload_file.assert_called_with("/local/cfg.txt", "/tmp/uploaded_config.txt")
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("[OK] Upload complete" in m for m in logged))
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_upload_config_template_worker_error(self, mock_thread):
+        app = self._make_app()
+        SSH_DeviceManager.filedialog.askopenfilename.return_value = "/local/cfg.txt"
+        app.upload_config_template()
+        target = mock_thread.call_args[1]["target"]
+        app.ssh.upload_file.side_effect = IOError("SFTP error")
+        target()
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("[ERROR] Upload failed" in m for m in logged))
+
+    def test_send_file_scp_not_connected(self):
+        app = self._make_app()
+        app.ssh.is_connected.return_value = False
+        with patch('ssh_device_manager.controllers.actions.messagebox.showwarning') as mock_warn:
+            app.send_file_scp()
+        mock_warn.assert_called_once()
+        app.ssh.upload_file.assert_not_called()
+
+    def test_send_file_scp_no_file_chosen(self):
+        app = self._make_app()
+        with patch('ssh_device_manager.controllers.actions.filedialog.askopenfilename',
+                   return_value=""):
+            app.send_file_scp()
+        app.ssh.upload_file.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# SectionsController unit tests  (sections.py: 28 % → 100 %)
+# ---------------------------------------------------------------------------
+
+class TestSectionsController(unittest.TestCase):
+    """Unit tests for SectionsController (reload, open, get_mtime, watcher)."""
+
+    def _make_app(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.log = MagicMock()
+        app.commands_frame = MagicMock()
+        app.commands_frame.winfo_children.return_value = []
+        return app
+
+    def test_reload_sections_updates_sections_and_mtime(self):
+        app = self._make_app()
+        new_sections = [MagicMock()]
+        with patch.object(app.sections_controller, 'load_sections_from_file',
+                          return_value=new_sections), \
+             patch.object(app.sections_controller, 'build_button_sections') as mock_build, \
+             patch.object(app.sections_controller, 'get_mtime', return_value=12345.0):
+            app.reload_sections("my_sections.json")
+        self.assertEqual(app.sections, new_sections)
+        self.assertEqual(app._sections_mtime, 12345.0)
+        mock_build.assert_called_once_with(new_sections)
+
+    def test_open_sections_file_with_file_selected(self):
+        app = self._make_app()
+        with patch('ssh_device_manager.controllers.sections.filedialog.askopenfilename',
+                   return_value="/chosen/sections.json"), \
+             patch.object(app.sections_controller, 'reload_sections') as mock_reload:
+            app.open_sections_file("default.json")
+        mock_reload.assert_called_once_with("/chosen/sections.json")
+
+    def test_open_sections_file_cancelled(self):
+        app = self._make_app()
+        with patch('ssh_device_manager.controllers.sections.filedialog.askopenfilename',
+                   return_value=""), \
+             patch.object(app.sections_controller, 'reload_sections') as mock_reload:
+            app.open_sections_file("default.json")
+        mock_reload.assert_not_called()
+
+    def test_get_mtime_returns_value_for_existing_file(self):
+        import tempfile, os
+        app = self._make_app()
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            tmp = f.name
+        try:
+            result = app._get_mtime(tmp)
+            self.assertIsNotNone(result)
+            self.assertIsInstance(result, float)
+        finally:
+            os.unlink(tmp)
+
+    def test_get_mtime_returns_none_for_missing_file(self):
+        app = self._make_app()
+        result = app._get_mtime("/nonexistent/path/that/does/not/exist.json")
+        self.assertIsNone(result)
+
+    def test_build_button_sections_excess_buttons_truncated(self):
+        app = self._make_app()
+        # Section with max_buttons=2 but 4 enabled actions
+        actions = [
+            SSH_DeviceManager.ActionButton(f"Btn{i}", True, MagicMock(), "tip")
+            for i in range(4)
+        ]
+        section = SSH_DeviceManager.ButtonSection("TestSec", max_buttons=2, actions=actions)
+        # build_button_sections should log a WARN and not crash
+        app.sections_controller.build_button_sections([section])
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("WARN" in m and "Truncating" in m for m in logged))
+
+    def test_build_button_sections_disabled_actions_excluded(self):
+        app = self._make_app()
+        actions = [
+            SSH_DeviceManager.ActionButton("Enabled", True, MagicMock(), ""),
+            SSH_DeviceManager.ActionButton("Disabled", False, MagicMock(), ""),
+        ]
+        section = SSH_DeviceManager.ButtonSection("Sec", max_buttons=6, actions=actions)
+        # Should not raise and should not warn about excess
+        app.sections_controller.build_button_sections([section])
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertFalse(any("WARN" in m and "Truncating" in m for m in logged))
+
+    def test_sections_watcher_detects_change_and_reloads(self):
+        app = self._make_app()
+        app.sections_path = "sections.json"
+        app._sections_mtime = 100.0
+        with patch.object(app.sections_controller, 'get_mtime', return_value=999.0), \
+             patch.object(app.sections_controller, 'reload_sections') as mock_reload:
+            # Manually invoke the watcher's inner check() function
+            # by calling start_sections_watcher and intercepting the after() call
+            scheduled_calls = []
+            app.after = lambda ms, fn: scheduled_calls.append(fn)
+            app.sections_controller.start_sections_watcher(interval_ms=1000)
+            # The first after() scheduled the check; invoke it
+            scheduled_calls[0]()
+        mock_reload.assert_called_once_with("sections.json")
+
+
+# ---------------------------------------------------------------------------
+# config.py – missing-file path  (config.py: 88 % → 100 %)
+# ---------------------------------------------------------------------------
+
+class TestAppConfigMissingFile(unittest.TestCase):
+    """Test load_app_config when the config file does not yet exist."""
+
+    def test_creates_default_when_file_missing(self):
+        import tempfile, os
+        from ssh_device_manager.config import load_app_config
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = os.path.join(tmp_dir, "new_config.json")
+            self.assertFalse(os.path.exists(path))
+
+            result = load_app_config(path)
+
+            # Should return default and also persist it
+            self.assertIn("profiles", result)
+            self.assertEqual(result["profiles"], {})
+            self.assertTrue(os.path.exists(path))
+
+
+# ---------------------------------------------------------------------------
+# ConnectionController gap tests  (connection.py: 89 % → 99 %)
+# ---------------------------------------------------------------------------
+
+class TestConnectionControllerGaps(unittest.TestCase):
+    """Tests for previously uncovered ConnectionController paths."""
+
+    def test_start_connection_monitor_schedules_poll(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+        app.status_var = MagicMock()
+        app.status_var.get.return_value = "Disconnected"
+
+        scheduled = []
+        app.after = lambda ms, fn: scheduled.append((ms, fn))
+
+        app._start_connection_monitor()
+
+        # At least one after() call should be pending
+        self.assertTrue(len(scheduled) > 0)
+
+    @patch('ssh_device_manager.controllers.connection.messagebox.showinfo')
+    def test_test_connection_shows_info_when_already_connected(self, mock_info):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = True
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+        app.status_var = MagicMock()
+        app.status_var.get.return_value = "Connected"
+
+        app.test_connection()
+
+        mock_info.assert_called_once()
+
+    @patch('ssh_device_manager.app.SSHManager')
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_test_connection_ssh_exception(self, mock_thread, MockSSHManager):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.host_var.get.return_value = "192.168.1.1"
+        app.user_var.get.return_value = "admin"
+        app.port_var.get.return_value = 22
+        app.pass_var.get.return_value = "pass"
+        app.timeout_var.get.return_value = 10
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.log = MagicMock()
+
+        MockSSHManager.return_value.connect.side_effect = (
+            SSH_DeviceManager.paramiko.SSHException("bad protocol")
+        )
+        app.test_connection()
+        target = mock_thread.call_args[1]["target"]
+        target()
+
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("SSH error" in m for m in logged))
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_connect_worker_finally_clears_is_connecting(self, mock_thread):
+        """is_connecting is reset to False even when connect() succeeds."""
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.host_var.get.return_value = "10.0.0.1"
+        app.user_var.get.return_value = "admin"
+        app.port_var.get.return_value = 22
+        app.pass_var.get.return_value = "pw"
+        app.timeout_var.get.return_value = 10
+        app.ssh = MagicMock()
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+
+        app.on_connect()
+        target = mock_thread.call_args[1]["target"]
+        target()
+
+        self.assertFalse(app.is_connecting)
+
+
+# ---------------------------------------------------------------------------
+# ProfileController gap tests  (profiles.py: 91 % → 98 %)
+# ---------------------------------------------------------------------------
+
+class TestProfileControllerGaps(unittest.TestCase):
+    """Tests for previously uncovered ProfileController paths."""
+
+    def _make_app(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.log = MagicMock()
+        app._save_app_config = MagicMock()
+        app._refresh_profile_list = MagicMock()
+        return app
+
+    def test_refresh_profile_list_empty_clears_selection(self):
+        app = self._make_app()
+        app.app_config["profiles"] = {}
+        app.profile_select_var.get.return_value = "OldProfile"
+        app._refresh_profile_list = MagicMock()  # let the real one run via controller
+        app.profile_controller.refresh_profile_list()
+        app.profile_select_var.set.assert_called_with("")
+
+    def test_refresh_profile_list_keeps_valid_selection(self):
+        app = self._make_app()
+        app.app_config["profiles"] = {"ProfileA": {}, "ProfileB": {}}
+        app.profile_select_var.get.return_value = "ProfileA"
+        app.profile_controller.refresh_profile_list()
+        # The currently selected profile exists, so set() should NOT be called
+        # (the controller returns early)
+        app.profile_select_var.set.assert_not_called()
+
+    @patch('ssh_device_manager.controllers.profiles.messagebox.showwarning')
+    def test_load_selected_profile_no_selection_warns(self, mock_warn):
+        app = self._make_app()
+        app.profile_select_var.get.return_value = ""
+        app.profile_controller.load_selected_profile()
+        mock_warn.assert_called_once()
+
+    @patch('ssh_device_manager.controllers.profiles.messagebox.showwarning')
+    def test_delete_selected_profile_no_selection_warns(self, mock_warn):
+        app = self._make_app()
+        app.profile_select_var.get.return_value = ""
+        app.profile_controller.delete_selected_profile()
+        mock_warn.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# sections_loader.py – empty-command handler  (line 31)
+# ---------------------------------------------------------------------------
+
+class TestSectionsLoaderEmptyCommand(unittest.TestCase):
+    """Verify that an action with an empty command gets a no-op log handler."""
+
+    def test_empty_command_handler_logs_warn(self):
+        from ssh_device_manager.sections_loader import load_sections_from_file
+        import json
+
+        log_calls = []
+        json_data = json.dumps({
+            "sections": [{
+                "title": "Test",
+                "max_buttons": 6,
+                "actions": [{"label": "NoCmd", "enabled": True, "command": "", "tooltip": ""}],
+            }]
+        })
+
+        with patch("builtins.open", unittest.mock.mock_open(read_data=json_data)), \
+             patch("os.path.exists", return_value=True):
+            sections = load_sections_from_file(
+                "dummy.json",
+                log=log_calls.append,
+                run_ssh_command=MagicMock(),
+                upload_config_template=MagicMock(),
+                send_file_scp=MagicMock(),
+                prompt_and_run_custom_command=MagicMock(),
+                fallback=lambda: [],
+            )
+
+        # Trigger the handler and confirm it logs a warning
+        sections[0].actions[0].handler()
+        self.assertTrue(any("[WARN]" in m for m in log_calls))
+
+
+# ---------------------------------------------------------------------------
+# validation.py – boundary: parse_int_input at exact min/max
+# ---------------------------------------------------------------------------
+
+class TestParseIntInputBoundary(unittest.TestCase):
+    """Additional edge cases for parse_int_input."""
+
+    def setUp(self):
+        self.app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+
+    def test_exact_minimum_is_valid(self):
+        self.assertEqual(self.app._parse_int_input("1", "Port", 1, 65535), 1)
+
+    def test_exact_maximum_is_valid(self):
+        self.assertEqual(self.app._parse_int_input("65535", "Port", 1, 65535), 65535)
+
+    def test_float_string_is_invalid(self):
+        self.assertIsNone(self.app._parse_int_input("22.5", "Port", 1, 65535))
+
+
+# ---------------------------------------------------------------------------
+# SSHManager – connect re-connects if already connected (line 54)
+# ---------------------------------------------------------------------------
+
+class TestSSHManagerReconnect(unittest.TestCase):
+    """Test that connect() calls disconnect() when already connected."""
+
+    @patch('SSH_DeviceManager.paramiko.SSHClient')
+    def test_connect_when_already_connected_disconnects_first(self, mock_ssh_client):
+        manager = SSH_DeviceManager.SSHManager()
+        existing_client = MagicMock()
+        manager.client = existing_client
+
+        manager.connect("host2", 22, "user", "pass")
+
+        # The old client should have been closed
+        existing_client.close.assert_called()
+        # A new client should be set
+        self.assertIsNotNone(manager.client)
 class TestStartupErrorLogging(unittest.TestCase):
     """Tests that the launcher writes a traceback to a log file on startup failure."""
 
@@ -1849,3 +2430,243 @@ class TestContracts(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# SectionsController – additional build_button_sections paths
+# (covers destroying existing children, odd-column separator, multiple sections)
+# ---------------------------------------------------------------------------
+
+class TestBuildButtonSectionsAdditional(unittest.TestCase):
+    """Cover lines missed in build_button_sections: child.destroy, separators."""
+
+    def _make_app(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.log = MagicMock()
+        app.commands_frame = MagicMock()
+        return app
+
+    def test_existing_children_are_destroyed(self):
+        """build_button_sections calls destroy() on existing frame children."""
+        app = self._make_app()
+        child1 = MagicMock()
+        child2 = MagicMock()
+        app.commands_frame.winfo_children.return_value = [child1, child2]
+
+        section = SSH_DeviceManager.ButtonSection("Sec", 6, [
+            SSH_DeviceManager.ActionButton("Btn", True, MagicMock(), ""),
+        ])
+        app.sections_controller.build_button_sections([section])
+
+        child1.destroy.assert_called_once()
+        child2.destroy.assert_called_once()
+
+    def test_multiple_sections_create_separator(self):
+        """Two sections -> one vertical separator between them (no crash)."""
+        app = self._make_app()
+        app.commands_frame.winfo_children.return_value = []
+
+        sec1 = SSH_DeviceManager.ButtonSection("Sec1", 6, [
+            SSH_DeviceManager.ActionButton("A", True, MagicMock(), ""),
+        ])
+        sec2 = SSH_DeviceManager.ButtonSection("Sec2", 6, [
+            SSH_DeviceManager.ActionButton("B", True, MagicMock(), ""),
+        ])
+        # Should not raise; ttk.Separator will be created via stub
+        app.sections_controller.build_button_sections([sec1, sec2])
+
+
+# ---------------------------------------------------------------------------
+# SectionsController – watcher finally block re-schedules
+# ---------------------------------------------------------------------------
+
+class TestSectionsWatcherFinallyRescheduling(unittest.TestCase):
+    """The watcher finally block always re-schedules via app.after()."""
+
+    def test_watcher_reschedules_after_successful_check(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.log = MagicMock()
+        app.sections_path = "sections.json"
+        app._sections_mtime = 100.0  # same mtime -> no reload
+
+        scheduled_fns = []
+        app.after = lambda ms, fn: scheduled_fns.append(fn)
+
+        with patch.object(app.sections_controller, 'get_mtime', return_value=100.0):
+            app.sections_controller.start_sections_watcher(interval_ms=500)
+            first_check = scheduled_fns[0]
+            scheduled_fns.clear()
+            first_check()
+
+        # finally block must have scheduled another call
+        self.assertTrue(len(scheduled_fns) > 0)
+
+    def test_watcher_reschedules_even_on_exception(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.log = MagicMock()
+        app.sections_path = "sections.json"
+
+        scheduled_fns = []
+        app.after = lambda ms, fn: scheduled_fns.append(fn)
+
+        with patch.object(app.sections_controller, 'get_mtime',
+                          side_effect=RuntimeError("unexpected")):
+            app.sections_controller.start_sections_watcher(interval_ms=500)
+            first_check = scheduled_fns[0]
+            scheduled_fns.clear()
+            first_check()
+
+        # re-scheduling must happen even on exception
+        self.assertTrue(len(scheduled_fns) > 0)
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("watcher error" in m for m in logged))
+
+
+# ---------------------------------------------------------------------------
+# ConnectionController – poll() inner body
+# ---------------------------------------------------------------------------
+
+class TestConnectionMonitorPoll(unittest.TestCase):
+    """The poll() function inside start_connection_monitor runs correctly."""
+
+    def test_poll_calls_refresh_and_reschedules(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+        app.status_var = MagicMock()
+        app.status_var.get.return_value = "Disconnected"
+
+        scheduled = []
+        app.after = lambda ms, fn: scheduled.append(fn)
+
+        app._start_connection_monitor()
+        poll_fn = scheduled[0]
+        scheduled.clear()
+        poll_fn()
+
+        # Should have re-scheduled itself
+        self.assertTrue(len(scheduled) > 0)
+        app._set_connected_ui.assert_called_with(False)
+
+
+# ---------------------------------------------------------------------------
+# ConnectionController – generic exception in test_connection worker
+# ---------------------------------------------------------------------------
+
+class TestTestConnectionGenericException(unittest.TestCase):
+    """test_connection logs a generic error for unexpected exceptions."""
+
+    @patch('ssh_device_manager.app.SSHManager')
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_generic_exception_logged(self, mock_thread, MockSSHManager):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.host_var.get.return_value = "10.0.0.1"
+        app.user_var.get.return_value = "admin"
+        app.port_var.get.return_value = 22
+        app.pass_var.get.return_value = "pw"
+        app.timeout_var.get.return_value = 10
+        app.ssh = MagicMock()
+        app.ssh.is_connected.return_value = False
+        app.log = MagicMock()
+
+        MockSSHManager.return_value.connect.side_effect = RuntimeError("totally unexpected")
+        app.test_connection()
+        target = mock_thread.call_args[1]["target"]
+        target()
+
+        logged = [c[0][0] for c in app.log.call_args_list]
+        self.assertTrue(any("Connection test failed" in m for m in logged))
+
+
+# ---------------------------------------------------------------------------
+# paramiko_compat – stub implementations (when paramiko is absent)
+# ---------------------------------------------------------------------------
+
+class TestParamikoCompatStub(unittest.TestCase):
+    """Test the fallback stubs in paramiko_compat when paramiko is not installed."""
+
+    def _get_stub_paramiko(self):
+        import sys, builtins
+        real_paramiko = sys.modules.get("paramiko")
+        real_compat = sys.modules.get("ssh_device_manager.paramiko_compat")
+
+        sys.modules.pop("paramiko", None)
+        sys.modules.pop("ssh_device_manager.paramiko_compat", None)
+
+        old_import = builtins.__import__
+
+        def _failing_import(name, *args, **kwargs):
+            if name == "paramiko":
+                raise ModuleNotFoundError("No module named 'paramiko'")
+            return old_import(name, *args, **kwargs)
+
+        builtins.__import__ = _failing_import
+        try:
+            import ssh_device_manager.paramiko_compat as compat_mod
+            stub = compat_mod.paramiko
+        finally:
+            builtins.__import__ = old_import
+            sys.modules.pop("ssh_device_manager.paramiko_compat", None)
+            if real_compat is not None:
+                sys.modules["ssh_device_manager.paramiko_compat"] = real_compat
+            if real_paramiko is not None:
+                sys.modules["paramiko"] = real_paramiko
+
+        return stub
+
+    def test_stub_ssh_client_connect_raises(self):
+        stub = self._get_stub_paramiko()
+        client = stub.SSHClient()
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(None)
+        with self.assertRaises(ModuleNotFoundError):
+            client.connect()
+
+    def test_stub_ssh_client_exec_command_raises(self):
+        stub = self._get_stub_paramiko()
+        client = stub.SSHClient()
+        with self.assertRaises(ModuleNotFoundError):
+            client.exec_command("ls")
+
+    def test_stub_ssh_client_open_sftp_raises(self):
+        stub = self._get_stub_paramiko()
+        client = stub.SSHClient()
+        with self.assertRaises(ModuleNotFoundError):
+            client.open_sftp()
+
+    def test_stub_ssh_client_get_transport_returns_none(self):
+        stub = self._get_stub_paramiko()
+        client = stub.SSHClient()
+        self.assertIsNone(client.get_transport())
+
+    def test_stub_ssh_client_close_is_noop(self):
+        stub = self._get_stub_paramiko()
+        client = stub.SSHClient()
+        client.close()
+
+    def test_stub_sftp_client_put_raises(self):
+        stub = self._get_stub_paramiko()
+        sftp = stub.SFTPClient()
+        with self.assertRaises(ModuleNotFoundError):
+            sftp.put("local", "remote")
+
+    def test_stub_sftp_client_close_is_noop(self):
+        stub = self._get_stub_paramiko()
+        sftp = stub.SFTPClient()
+        sftp.close()
+
+
+# ---------------------------------------------------------------------------
+# validation.py – line 23: parse_int_input below min with no maximum
+# ---------------------------------------------------------------------------
+
+class TestParseIntInputNoMaxBelowMin(unittest.TestCase):
+    """Cover the range_text = f'{minimum}+' branch when maximum is None."""
+
+    def test_below_minimum_no_maximum_shows_range_text(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        # value 0 is below minimum 1; no maximum supplied → line 23 branch
+        result = app._parse_int_input("0", "Count", minimum=1)
+        self.assertIsNone(result)

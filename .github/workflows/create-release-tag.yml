@@ -1,0 +1,89 @@
+# .github/workflows/create-release-tag.yml
+name: Create Release Tag
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+  issues: read
+
+jobs:
+  create-release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release tag
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const labels = pr.labels.map(label => label.name);
+
+            let bump = null;
+
+            if (labels.includes("release:major")) {
+              bump = "major";
+            } else if (labels.includes("release:minor")) {
+              bump = "minor";
+            } else if (labels.includes("release:patch")) {
+              bump = "patch";
+            } else if (labels.includes("release:none")) {
+              core.notice("release:none label found. Skipping release.");
+              return;
+            } else {
+              core.setFailed("No release label found. Add release:major, release:minor, release:patch, or release:none.");
+              return;
+            }
+
+            let currentVersion = "v0.0.0";
+
+            try {
+              const latestRelease = await github.rest.repos.getLatestRelease({
+                owner,
+                repo
+              });
+
+              currentVersion = latestRelease.data.tag_name;
+            } catch (error) {
+              core.notice("No existing release found. Starting from v0.0.0.");
+            }
+
+            function bumpVersion(version, bump) {
+              const clean = version.replace(/^v/, "");
+              const [major, minor, patch] = clean.split(".").map(Number);
+
+              if (bump === "major") {
+                return `v${major + 1}.0.0`;
+              }
+
+              if (bump === "minor") {
+                return `v${major}.${minor + 1}.0`;
+              }
+
+              return `v${major}.${minor}.${patch + 1}`;
+            }
+
+            const nextVersion = bumpVersion(currentVersion, bump);
+
+            await github.rest.repos.createRelease({
+              owner,
+              repo,
+              tag_name: nextVersion,
+              target_commitish: pr.merge_commit_sha,
+              name: nextVersion,
+              body: `Release ${nextVersion} created from PR #${pr.number}: ${pr.title}`,
+              draft: false,
+              prerelease: false
+            });
+
+            core.notice(`Created release ${nextVersion}`);

@@ -1,0 +1,117 @@
+# .github/workflows/suggest-release-version.yml
+name: Suggest Release Version
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  suggest-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Suggest next version
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            const labels = pr.labels.map(label => label.name);
+
+            const hasReleaseLabel = labels.some(label =>
+              ["release:major", "release:minor", "release:patch", "release:none"].includes(label)
+            );
+
+            // Get latest release/tag from GitHub releases.
+            let currentVersion = "v0.0.0";
+
+            try {
+              const latestRelease = await github.rest.repos.getLatestRelease({
+                owner,
+                repo
+              });
+
+              currentVersion = latestRelease.data.tag_name;
+            } catch (error) {
+              core.notice("No existing GitHub release found. Using v0.0.0.");
+            }
+
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              {
+                owner,
+                repo,
+                pull_number: pr.number,
+                per_page: 100
+              }
+            );
+
+            const commitMessages = commits.map(commit => commit.commit.message).join("\n");
+
+            let suggestedBump = "patch";
+
+            if (
+              commitMessages.includes("BREAKING CHANGE") ||
+              commitMessages.match(/!:/)
+            ) {
+              suggestedBump = "major";
+            } else if (
+              commitMessages.match(/^feat(\(.+\))?:/m) ||
+              commitMessages.toLowerCase().includes("feature")
+            ) {
+              suggestedBump = "minor";
+            }
+
+            function bumpVersion(version, bump) {
+              const clean = version.replace(/^v/, "");
+              const [major, minor, patch] = clean.split(".").map(Number);
+
+              if (bump === "major") {
+                return `v${major + 1}.0.0`;
+              }
+
+              if (bump === "minor") {
+                return `v${major}.${minor + 1}.0`;
+              }
+
+              return `v${major}.${minor}.${patch + 1}`;
+            }
+
+            const suggestedVersion = bumpVersion(currentVersion, suggestedBump);
+
+            const body = [
+              "## Release Version Suggestion",
+              "",
+              `Current version: \`${currentVersion}\``,
+              `Suggested bump: \`${suggestedBump}\``,
+              `Suggested next version: \`${suggestedVersion}\``,
+              "",
+              "To approve or override this suggestion, add one of these labels to the PR:",
+              "",
+              "- `release:major`",
+              "- `release:minor`",
+              "- `release:patch`",
+              "- `release:none`",
+              "",
+              hasReleaseLabel
+                ? "A release label is already present, so the merge workflow will use that label."
+                : "No release label has been selected yet."
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pr.number,
+              body
+            });

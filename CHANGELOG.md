@@ -4,6 +4,8 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-05-09
+
 ### Added
 - **Controller Layer Refactor**:
     - Added `ssh_device_manager/controllers/` with focused controllers for connection lifecycle, SSH actions/uploads, profile CRUD, and sections loading/rendering/watching.

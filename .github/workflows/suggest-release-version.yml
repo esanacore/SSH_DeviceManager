@@ -16,7 +16,7 @@
 name: 1 - Suggest Release Version
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, edited]
 
 permissions:

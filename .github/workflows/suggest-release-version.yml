@@ -1,9 +1,23 @@
-# .github/workflows/suggest-release-version.yml
-name: Suggest Release Version
+# .github/workflows/1-suggest-release-version.yml
+#
+# PURPOSE:
+#   This workflow reviews a pull request and comments with a suggested release bump.
+#
+# WHAT IT DOES:
+#   - Finds the latest GitHub release, such as v1.4.2
+#   - Looks at the PR commit messages
+#   - Suggests major, minor, patch, or none
+#   - Comments on the PR with the suggested next version
+#
+# IMPORTANT:
+#   This workflow does NOT create a release.
+#   It only suggests what the next release should be.
+
+name: 1 - Suggest Release Version
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
@@ -11,29 +25,22 @@ permissions:
   issues: write
 
 jobs:
-  suggest-version:
+  suggest-release-version:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Suggest next version
+      - name: Suggest release version
         uses: actions/github-script@v8
         with:
           script: |
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
 
-            const labels = pr.labels.map(label => label.name);
-
-            const hasReleaseLabel = labels.some(label =>
-              ["release:major", "release:minor", "release:patch", "release:none"].includes(label)
-            );
-
-            // Get latest release/tag from GitHub releases.
+            // ------------------------------------------------------------
+            // STEP 1: Get the latest GitHub release.
+            // Example: v1.4.2
+            // If no release exists yet, start from v0.0.0.
+            // ------------------------------------------------------------
             let currentVersion = "v0.0.0";
 
             try {
@@ -44,9 +51,18 @@ jobs:
 
               currentVersion = latestRelease.data.tag_name;
             } catch (error) {
-              core.notice("No existing GitHub release found. Using v0.0.0.");
+              core.notice("No existing release found. Starting from v0.0.0.");
             }
 
+            // ------------------------------------------------------------
+            // STEP 2: Read commit messages from the pull request.
+            //
+            // This works best if commits follow a simple convention:
+            //   feat: add new feature        -> minor
+            //   fix: correct a bug           -> patch
+            //   feat!: breaking change       -> major
+            //   BREAKING CHANGE              -> major
+            // ------------------------------------------------------------
             const commits = await github.paginate(
               github.rest.pulls.listCommits,
               {
@@ -57,13 +73,22 @@ jobs:
               }
             );
 
-            const commitMessages = commits.map(commit => commit.commit.message).join("\n");
+            const commitMessages = commits
+              .map(commit => commit.commit.message)
+              .join("\n");
 
+            // ------------------------------------------------------------
+            // STEP 3: Suggest the bump type.
+            //
+            // major = breaking change
+            // minor = new feature
+            // patch = bug fix / small change
+            // ------------------------------------------------------------
             let suggestedBump = "patch";
 
             if (
               commitMessages.includes("BREAKING CHANGE") ||
-              commitMessages.match(/!:/)
+              commitMessages.match(/^[a-zA-Z]+(\(.+\))?!:/m)
             ) {
               suggestedBump = "major";
             } else if (
@@ -73,9 +98,14 @@ jobs:
               suggestedBump = "minor";
             }
 
+            // ------------------------------------------------------------
+            // STEP 4: Calculate the next version number.
+            // ------------------------------------------------------------
             function bumpVersion(version, bump) {
-              const clean = version.replace(/^v/, "");
-              const [major, minor, patch] = clean.split(".").map(Number);
+              const cleanVersion = version.replace(/^v/, "");
+              const [major, minor, patch] = cleanVersion
+                .split(".")
+                .map(Number);
 
               if (bump === "major") {
                 return `v${major + 1}.0.0`;
@@ -90,23 +120,32 @@ jobs:
 
             const suggestedVersion = bumpVersion(currentVersion, suggestedBump);
 
+            // ------------------------------------------------------------
+            // STEP 5: Comment on the PR.
+            //
+            // This is the workflow "asking" you what to do.
+            // You answer by adding one of these labels:
+            //
+            //   release:major
+            //   release:minor
+            //   release:patch
+            //   release:none
+            // ------------------------------------------------------------
             const body = [
               "## Release Version Suggestion",
               "",
-              `Current version: \`${currentVersion}\``,
+              `Current release: \`${currentVersion}\``,
               `Suggested bump: \`${suggestedBump}\``,
-              `Suggested next version: \`${suggestedVersion}\``,
+              `Suggested next release: \`${suggestedVersion}\``,
               "",
-              "To approve or override this suggestion, add one of these labels to the PR:",
+              "Before merging, choose the final release decision by adding one label:",
               "",
-              "- `release:major`",
-              "- `release:minor`",
-              "- `release:patch`",
-              "- `release:none`",
+              "- `release:major` for breaking changes",
+              "- `release:minor` for new features",
+              "- `release:patch` for bug fixes or small updates",
+              "- `release:none` if this PR should not create a release",
               "",
-              hasReleaseLabel
-                ? "A release label is already present, so the merge workflow will use that label."
-                : "No release label has been selected yet."
+              "After the PR is merged, manually run the `2 - Create Release` workflow from the Actions tab."
             ].join("\n");
 
             await github.rest.issues.createComment({

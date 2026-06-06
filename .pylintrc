@@ -26,8 +26,7 @@ disable=
     too-many-statements,
     too-many-locals,
     too-many-lines,
-    missing-final-newline,
-    duplicate-code
+    missing-final-newline
 
 [TYPECHECK]
 ignored-modules=tkinter

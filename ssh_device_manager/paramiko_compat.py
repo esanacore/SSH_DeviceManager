@@ -18,11 +18,9 @@ except ModuleNotFoundError:
         """Mock SSHClient for environments without Paramiko."""
         def load_system_host_keys(self):
             """Mock loading host keys."""
-            return None
 
         def set_missing_host_key_policy(self, _policy):
             """Mock setting host key policy."""
-            return None
 
         def connect(self, *args, **kwargs):
             """Raises ModuleNotFoundError if connection is attempted."""
@@ -42,7 +40,6 @@ except ModuleNotFoundError:
 
         def close(self):
             """Mock closing client."""
-            return None
 
     class _SFTPClient:
         """Mock SFTPClient for environments without Paramiko."""
@@ -52,7 +49,6 @@ except ModuleNotFoundError:
 
         def close(self):
             """Mock closing SFTP client."""
-            return None
 
     class _AuthenticationException(Exception):
         """Mock AuthenticationException."""

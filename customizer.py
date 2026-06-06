@@ -112,7 +112,7 @@ class CustomizerApp(tk.Tk):
         Args:
             _e: The Tkinter event object. Defaults to None.
         """
-        pass
+        _selected_action = self.action_index()
 
     def section_index(self):
         """Returns the currently selected section index.

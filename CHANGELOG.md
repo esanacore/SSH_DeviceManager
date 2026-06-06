@@ -20,7 +20,7 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - `output.py`: OutputManager for thread-safe logging, append, clear, copy, save.
     - `app.py`: SSHGuiApp Tkinter orchestrator (slim, wires modules together).
     - `__init__.py`: Re-exports public API for backward compatibility.
-    - `SSH_DeviceManager.py` is now a thin 26-line launcher/shim.
+    - `SSH_DeviceManager.py` is now a thin 49-line launcher/shim.
 - **Connection Profiles**:
     - Save, load, and delete connection profiles (host, port, username, timeout, host key mode).
     - Profiles persist to `ssh_device_manager_config.json`.
@@ -76,7 +76,7 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 - **Architecture**: Single-file monolith ? modular package with 8 modules.
 - **Theme System**: Updated apply_theme to style buttons, borders, separators, checkbuttons, spinboxes.
 - **Security Default**: Host key policy changed from AutoAddPolicy to WarningPolicy.
-- **Test Count**: 19 → 100 tests (84 unit + 16 integration).
+- **Test Count**: 19 → 158 tests (142 unit + 16 integration).
 
 ### Fixed
 - **Pylint CI Stability**:

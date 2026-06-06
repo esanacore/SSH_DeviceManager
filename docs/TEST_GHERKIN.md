@@ -2,8 +2,8 @@
 # SSH Device Manager - Test Specifications (Gherkin)
 
 > **Test File:** `test_SSH_DeviceManager.py`
-> **Total Scenarios:** 100
-> **Last Updated:** 2026-05-09
+> **Total Scenarios:** 158
+> **Last Updated:** 2026-06-06
 > **Format:** Gherkin (Given/When/Then) for requirements traceability
 
 ---

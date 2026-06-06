@@ -21,7 +21,7 @@ docs/
 | **TEST_MATRIX.md** | Developers, QA leads, auditors | Lookup any test by ID, see exactly what it asserts, trace it back to a requirement |
 | **TEST_GHERKIN.md** | Product owners, QA, non-developers | Understand *what the app should do* in plain English without reading code |
 
-Both documents describe the **same 100 tests**. They are two views of the same
+Both documents describe the **same 158 tests**. They are two views of the same
 data � one structured for machines/databases, one structured for humans.
 
 ---
@@ -32,7 +32,7 @@ data � one structured for machines/databases, one structured for humans.
 
 ```
 > Test File: test_SSH_DeviceManager.py
-> Total Tests: 100 (84 unit + 16 integration)
+> Total Tests: 158 (142 unit + 16 integration)
 > Run Command: python -m unittest test_SSH_DeviceManager.py -v
 ```
 
@@ -59,7 +59,7 @@ How to read each column:
 | **Tests** | Number of `test_*` methods inside that class |
 | **Type** | **Unit** = tests one method in isolation; **Integration** = tests a multi-step flow |
 
-The **TOTAL** row at the bottom is your quick health check: 25 classes, 100 tests.
+The **TOTAL** row at the bottom is your quick health check: 41 classes, 158 tests.
 
 ### 1.3 Unit Test Detail Tables
 
@@ -113,16 +113,24 @@ Every test has a unique ID with a predictable structure:
 | Code | Full Name | Maps To |
 |---|---|---|
 | DM | Data Models | `TestDataModels` |
-| SSH | SSH Manager | `TestSSHManager` |
+| TT | ToolTip | `TestToolTip` |
+| SSH | SSH Manager | `TestSSHManager`, `TestSSHManagerReconnect` |
 | APP | GUI App Core | `TestSSHGuiApp` |
+| OM | Output Manager | `TestOutputManager` |
+| PC | Paramiko Compat | `TestParamikoCompatStub` |
 | VAL | Connection Input Validation | `TestGetConnectionInputs` |
 | CE | Connect Errors | `TestOnConnectErrors` |
-| TE | Test Connection Errors | `TestTestConnectionErrors` |
+| TE | Test Connection Errors | `TestTestConnectionErrors`, `TestTestConnectionGenericException` |
 | HK | Host Key Mode | `TestGetHostKeyMode` |
-| PI | Parse Integer Input | `TestParseIntInput` |
+| PI | Parse Integer Input | `TestParseIntInput`, `TestParseIntInputBoundary`, `TestParseIntInputNoMaxBelowMin` |
 | TH | Themes | `TestThemes` |
-| PR | Profiles | `TestProfiles` |
+| PR | Profiles | `TestProfiles`, `TestProfileControllerGaps` |
 | HH | Host History | `TestHostHistory` |
+| CS | Connection State | `TestConnectionStateMonitor` |
+| CC | Connection Controller | `TestConnectionControllerGaps`, `TestConnectionMonitorPoll` |
+| AC | Action Controller | `TestActionControllerPerformUpload` |
+| SC | Sections Controller | `TestSectionsController`, `TestSectionsLoaderEmptyCommand`, `TestSectionsWatcherFinallyRescheduling`, `TestBuildButtonSectionsAdditional` |
+| CFG | App Config | `TestAppConfigMissingFile` |
 | LC | Lifecycle | `TestConnectRunDisconnectLifecycle` |
 | AF | Auth Failure | `TestConnectAuthFailureRetry` |
 | VB | Validation Blocks | `TestValidationBlocksConnect` |
@@ -133,7 +141,6 @@ Every test has a unique ID with a predictable structure:
 | CR | Config Round-trip | `TestAppConfigRoundTrip` |
 | HL | Host History Limit | `TestHostHistoryLimit` |
 | DC | Disconnect Credentials | `TestDisconnectClearsCredentials` |
-| CS | Connection State | `TestConnectionStateMonitor` |
 | SE | Startup Error Logging | `TestStartupErrorLogging` |
 | CT | Contracts | `TestContracts` |
 
@@ -417,7 +424,7 @@ After editing, run this quick check:
 ```powershell
 # Count tests in code vs docs
 python -m unittest test_SSH_DeviceManager.py -v 2>&1 | Select-String "^Ran"
-# Should match the "Total Tests: 100" in both doc headers
+# Should match the "Total Tests: 158" in both doc headers
 ```
 
 ---

@@ -612,6 +612,7 @@ Tips:
         self._sync_output_manager_widget()
         self.output_manager.clear()
 
+    # pylint: disable=duplicate-code
     def copy_output(self):
         """Copies the contents of the terminal output pane to the clipboard."""
         text = self.output_text.get("1.0", "end-1c")
@@ -637,6 +638,7 @@ Tips:
                 self.log(f"[OK] Output saved to {file_path}")
             except Exception as exc:
                 self.log(f"[ERROR] Failed to save output: {exc}")
+    # pylint: enable=duplicate-code
 
     def _get_mtime(self, path: str):
         """Returns the modification time of a file.

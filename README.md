@@ -23,8 +23,8 @@ ssh_device_manager/          # Main package
         profiles.py          # Profile CRUD
         sections.py          # Section loading, rendering, file watching
 
-SSH_DeviceManager.py         # Thin launcher / backward-compat shim
-test_SSH_DeviceManager.py    # 100 unit + integration tests
+SSH_DeviceManager.py         # Thin launcher / backward-compat shim (49 lines)
+test_SSH_DeviceManager.py    # 158 unit + integration tests
 customizer.py                # Standalone sections.json editor
 docs/                        # Test matrix, Gherkin specs, reading guide
 ```

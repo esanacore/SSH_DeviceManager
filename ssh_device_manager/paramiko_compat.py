@@ -13,17 +13,14 @@ except ModuleNotFoundError:
     # load in test environments that do not install optional SSH dependencies.
     class _MissingHostKeyPolicy:
         """Mock host key policy for environments without Paramiko."""
-        pass
 
     class _SSHClient:
         """Mock SSHClient for environments without Paramiko."""
         def load_system_host_keys(self):
             """Mock loading host keys."""
-            pass
 
         def set_missing_host_key_policy(self, _policy):
             """Mock setting host key policy."""
-            pass
 
         def connect(self, *args, **kwargs):
             """Raises ModuleNotFoundError if connection is attempted."""
@@ -43,7 +40,6 @@ except ModuleNotFoundError:
 
         def close(self):
             """Mock closing client."""
-            pass
 
     class _SFTPClient:
         """Mock SFTPClient for environments without Paramiko."""
@@ -53,15 +49,12 @@ except ModuleNotFoundError:
 
         def close(self):
             """Mock closing SFTP client."""
-            pass
 
     class _AuthenticationException(Exception):
         """Mock AuthenticationException."""
-        pass
 
     class _SSHException(Exception):
         """Mock SSHException."""
-        pass
 
     class _ParamikoFallback:
         """Container for mock Paramiko classes."""

@@ -21,7 +21,11 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  # Note: 'pull-requests: write' and 'issues: write' are required to post PR comments.
+  # If the repository setting "Allow GitHub Actions to create and approve pull
+  # requests" is disabled, the token is capped at 'pull-requests: read' regardless
+  # of this declaration. In that case the job falls back to the step summary.
+  pull-requests: write
   issues: write
 
 jobs:
@@ -148,9 +152,20 @@ jobs:
               "After the PR is merged, manually run the `2 - Create Release` workflow from the Actions tab."
             ].join("\n");
 
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number: pr.number,
-              body
-            });
+            try {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pr.number,
+                body
+              });
+            } catch (error) {
+              core.warning(
+                `Could not post PR comment (${error.status ?? error.message}). ` +
+                "Check that the workflow token has 'pull-requests: write' or 'issues: write' access. " +
+                "Falling back to job summary."
+              );
+              await core.summary
+                .addRaw(body)
+                .write();
+            }

@@ -3,6 +3,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+## Configuration files
+ssh_device_manager_config.json
+SSH_DeviceManager.py.bak
+
+
 # User-specific files
 *.rsuser
 *.suo
@@ -361,3 +366,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+ssh_device_manager_config.json
+SSH_DeviceManager.py.bak
+SSH_DeviceManager.pyproj

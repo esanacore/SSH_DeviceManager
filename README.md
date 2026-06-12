@@ -1,5 +1,10 @@
 # SSH Device Manager
 
+<!-- CONSTITUTION_START -->
+[![Eric's Engineering Constitution](https://img.shields.io/badge/Eric's%20Engineering%20Constitution-Adopted-blue)](constitution/CONSTITUTION.md)
+<!-- CONSTITUTION_END -->
+
+
 A Python Tkinter GUI application for managing SSH connections and executing commands on remote devices. Uses `paramiko` for SSH/SFTP. This project provides a configurable, themeable SSH command console with a separate GUI customizer and automatic configuration reload.
 
 ## Project Structure

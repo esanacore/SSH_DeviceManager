@@ -5,6 +5,13 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- Added `docs/TEST_PLAN.md` with the repository's current logic-first test strategy, concrete verification commands, and explicit coverage gaps around live SSH interoperability, UI visuals, and missing percentage instrumentation.
+- Added `docs/PRODUCT_REQUIREMENTS.md` and `docs/REQUIREMENTS_TRACEABILITY.md` so the app's connection, command, upload, config, and reliability expectations now have stable requirement IDs tied back to existing automated evidence.
+
+### Changed
+- Replaced the placeholder root `TODO.md` with concrete feature, technical-debt, testing, and documentation follow-ups aligned with the new governance docs.
+
+### Added
 - **Controller Layer Refactor**:
     - Added `ssh_device_manager/controllers/` with focused controllers for connection lifecycle, SSH actions/uploads, profile CRUD, and sections loading/rendering/watching.
     - Added `constants.py` to centralize shared app constants.

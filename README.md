@@ -20,7 +20,7 @@ ssh_device_manager/          # Main package
     paramiko_compat.py       # Clean import when paramiko is absent
     sections_loader.py       # JSON section loading + handler resolution
     validation.py            # Input validation helpers
-    output.py                # OutputManager (log queue, append, clear, copy, save)
+    output.py                # OutputManager (log queue, append, clear, copy, save, JSON export)
     app.py                   # SSHGuiApp (Tkinter orchestrator)
     controllers/             # Focused controllers
         connection.py        # Connection lifecycle
@@ -47,7 +47,7 @@ docs/                        # Test matrix, Gherkin specs, reading guide
 - `customizer.py`: visual editor to create/edit `sections.json` with a live preview.
 - Auto-reload: main app watches the active `sections.json` and reloads the Actions panel when the file changes.
 - 18 built-in themes (Default, Solarized Dark/Light, Dark Mode, Retro Terminal, Cyberpunk, Nord, Dracula, Gruvbox Dark/Light, Monokai Pro, One Dark, Tokyo Night, High Contrast, Catppuccin Mocha, Amber Terminal, NY Mets, NY Rangers) and easy theme additions.
-- Thread-safe logging shown in the Terminal Output pane, plus copy/save/clear options.
+- Thread-safe logging shown in the Terminal Output pane, plus copy/save/clear and structured JSON export options.
 - Host history combobox with `<Clear History>` option (last 10 connections).
 
 ## Quick start
@@ -100,15 +100,15 @@ docs/                        # Test matrix, Gherkin specs, reading guide
 ```
 
 Supported command tokens:
-- `run:...` � execute the right-hand string as an SSH command.
-- `__upload_template__` � open file picker and upload via `upload_config_template()`.
-- `__send_file__` � open SCP-style dialog and upload via `send_file_scp()`.
-- `__custom_command__` � open the Run Custom Command dialog.
+- `run:...` - execute the right-hand string as an SSH command.
+- `__upload_template__` - open file picker and upload via `upload_config_template()`.
+- `__send_file__` - open SCP-style dialog and upload via `send_file_scp()`.
+- `__custom_command__` - open the Run Custom Command dialog.
 
 Rules:
 - `enabled` controls visibility of buttons.
 - `max_buttons` limits visible buttons; extras are truncated with a warning.
-- Keep secrets out of `sections.json` � it's intended for UI metadata only.
+- Keep secrets out of `sections.json` - it is intended for UI metadata only.
 
 ## Themes
 
@@ -148,9 +148,25 @@ Pylint behavior is configured via `.pylintrc` to keep checks practical for
 this Tkinter-heavy application and the current test architecture.
 
 Test documentation:
-- `docs/TEST_MATRIX.md` � Test IDs, descriptions, and requirements traceability matrix
-- `docs/TEST_GHERKIN.md` � Gherkin behavioral specifications (Given/When/Then)
-- `docs/READING_GUIDE.md` � How to navigate the test documentation
+- `docs/TEST_MATRIX.md` - Test IDs, descriptions, and requirements traceability matrix
+- `docs/TEST_GHERKIN.md` - Gherkin behavioral specifications (Given/When/Then)
+- `docs/READING_GUIDE.md` - How to navigate the test documentation
+- `docs/TEST_PLAN.md` - Constitution-aligned test strategy, coverage targets, and gap log
+- `docs/PRODUCT_REQUIREMENTS.md` - Stable product requirement IDs and acceptance criteria
+- `docs/REQUIREMENTS_TRACEABILITY.md` - Requirement-to-test verification matrix
+
+## Constitution workflow
+
+This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.29.0` on `main` and includes local guardrails for Constitution version checks, compliance checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
+
+Start with:
+
+- `AGENTS.md` for agent work rules
+- `docs/ARCHITECTURE.md` for system boundaries and components
+- `docs/SETUP.md` for local workstation setup
+- `docs/COMMAND_REFERENCE.md` for validation commands
+- `docs/OPERATIONS.md` for release and incident-response guidance
+- `TODO.md` for the living roadmap
 
 ## Contributing & Workflow
 

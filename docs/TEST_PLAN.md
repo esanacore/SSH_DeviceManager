@@ -1,71 +1,64 @@
 # Test Plan
 
-This document defines how SSH Device Manager is tested, what quality floor the
-current suite is expected to hold, and which important behaviors still rely on
-manual or future verification.
+This document defines how SSH Device Manager is tested, what coverage is expected, and which gaps remain.
 
-It is a living document. Update it whenever the test strategy, commands, or
-known coverage gaps change.
+## Test Commands
+
+Primary suite:
+
+```bash
+python -m unittest test_SSH_DeviceManager.py test_customizer.py -v
+```
+
+Focused host-history regression:
+
+```bash
+python -m unittest test_SSH_DeviceManager.TestHostHistory test_SSH_DeviceManager.TestHostHistoryLimit -v
+```
+
+Constitution compliance:
+
+```bash
+"C:\Program Files\Git\bin\bash.exe" constitution/scripts/check_compliance.sh --strict --product .
+"C:\Program Files\Git\bin\bash.exe" constitution/scripts/check_traceability.sh docs/PRODUCT_REQUIREMENTS.md docs/REQUIREMENTS_TRACEABILITY.md
+```
+
+Optional lint:
+
+```bash
+pylint $(git ls-files '*.py')
+```
 
 ## Test Strategy
 
-SSH Device Manager is a desktop Tkinter application with most behavior pushed
-into testable modules. The repository currently leans on deterministic
-logic-level tests and mocked UI seams rather than brittle full-desktop UI
-automation.
-
-- **Unit tests**: `test_SSH_DeviceManager.py` exercises the data models, SSH
-  manager, validation helpers, output manager, theme contracts, and controller
-  logic with mocked Paramiko/Tkinter boundaries.
-- **Integration tests**: the same suite includes end-to-end-in-process flows
-  for connect-run-disconnect, profile workflows, config round-trips, sections
-  loading, command-history behavior, and credential clearing.
-- **Manual / visual verification**: theme appearance, widget spacing, window
-  geometry, and real-network SSH behavior are still checked manually when those
-  areas change.
-
-## How to Run Tests
-
-- Full suite: `python -m unittest test_SSH_DeviceManager.py -v`
-- Syntax check: `python -m py_compile SSH_DeviceManager.py customizer.py test_SSH_DeviceManager.py`
-- Lint: `pylint $(git ls-files '*.py')`
+- **Unit tests** cover validation helpers, data models, theme contracts, output management and structured output export, config serialization, profile behavior, SSH manager behavior, and compatibility shims.
+- **Controller tests** cover connection, action/upload, profile, and sections controllers with mocked UI/Paramiko dependencies.
+- **Integration-style tests** exercise connect, command, disconnect, validation recovery, profile round trip, sections loading, and command failure workflows without requiring live SSH devices.
+- **Contract tests** verify theme keys, sections schema, command tokens, profile schema, public SSHManager interface, and controller interfaces.
 
 ## Coverage Targets
 
-Targets are a floor, not a ceiling. New work should preserve the current
-logic-first test posture and avoid pushing important rules back into
-unexercised Tkinter callbacks.
-
-| Scope | Metric | Floor |
+| Area | Target | Notes |
 | --- | --- | --- |
-| Repository default | Automated behavioral coverage of modified logic paths | Required |
-| Core connection / action logic | Deterministic unit or integration tests | Required |
-| Validation, profile persistence, and config parsing | Negative-case automated tests | Required |
-| UI presentation / theme visuals | Manual verification when touched | Required |
+| Changed code | Regression test for every bug fix or behavior change | Required before implementation. |
+| Core SSH/profile/config/controllers | Meaningful branch coverage through mocked unit tests | Live SSH devices are not required for default validation. |
+| Product requirements | Every requirement ID maps to at least one verifying test | See `docs/REQUIREMENTS_TRACEABILITY.md`. |
+| Governance docs/scripts | Constitution checks pass under `--strict --product` | Uses the pinned `constitution/` submodule. |
 
-## Continuous Coverage Evaluation
+Line coverage is not currently measured in CI. The near-term target is to add a coverage command and record the first measured baseline here before enforcing a numeric floor.
 
-The repository does not yet publish line/branch percentages via `coverage.py`.
-The current baseline is instead tracked as the automated suite size and the
-command set that must keep passing on each change.
+## Continuous Coverage Record
 
-| Date | Overall coverage signal | Notes |
+| Date | Evidence | Notes |
 | --- | --- | --- |
-| 2026-07-01 | 158 automated tests | Baseline behavioral suite from `test_SSH_DeviceManager.py`; percentage instrumentation not yet configured. |
+| 2026-06-30 | `Ran 171 tests in 0.515s` / `OK` | Baseline before host-history regression fix in `codex/constitution-hardening`. |
+| 2026-06-30 | `Ran 172 tests in 0.634s` / `OK` | Full suite after host-history regression fix and Constitution documentation updates. |
+| 2026-07-04 | `Ran 176 tests in 0.518s` / `OK` | Full suite after structured JSON output export and Constitution 1.29.0 alignment updates. |
 
 ## Coverage Gap Log
 
-Track known untested behavior here. Each gap should have a matching follow-up
-in `TODO.md` under Testing or Technical Debt.
-
 | Gap ID | Area / behavior | Risk | Related requirement | Status | TODO ref |
 | --- | --- | --- | --- | --- | --- |
-| GAP-001 | Real SSH interoperability against a live server matrix (host-key modes, SFTP, reconnect) is not exercised in CI. | Medium | FR-001, FR-002, FR-003, NFR-002 | Open | TODO.md#testing |
-| GAP-002 | Visual rendering of themes, resizing, and Tk widget layout remains manual. | Medium | FR-005, NFR-003 | Open | TODO.md#testing |
-| GAP-003 | Line/branch percentages are not yet collected or enforced in CI. | Low | NFR-004 | Open | TODO.md#testing |
-
-## Requirement Coverage
-
-The authoritative mapping from product requirements to verifying tests lives in
-`docs/REQUIREMENTS_TRACEABILITY.md`. Requirements with no verifying test are
-coverage gaps and should also appear in the table above.
+| GAP-001 | No measured line/branch coverage command or stored baseline. | Medium | NFR-003 | Open | `TODO.md` Testing |
+| GAP-002 | No live-device smoke checklist for real SSH/SFTP behavior after mocked tests pass. | Medium | FR-001, FR-002, FR-003 | Open | `TODO.md` Testing |
+| GAP-003 | UI thread-affinity behavior is tested through mocks but not exercised with a real Tk event loop. | Medium | NFR-001 | Open | `TODO.md` Testing |

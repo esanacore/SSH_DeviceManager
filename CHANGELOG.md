@@ -5,13 +5,14 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
-- Added `docs/TEST_PLAN.md` with the repository's current logic-first test strategy, concrete verification commands, and explicit coverage gaps around live SSH interoperability, UI visuals, and missing percentage instrumentation.
-- Added `docs/PRODUCT_REQUIREMENTS.md` and `docs/REQUIREMENTS_TRACEABILITY.md` so the app's connection, command, upload, config, and reliability expectations now have stable requirement IDs tied back to existing automated evidence.
-
-### Changed
-- Replaced the placeholder root `TODO.md` with concrete feature, technical-debt, testing, and documentation follow-ups aligned with the new governance docs.
-
-### Added
+- **Engineering Constitution Completion**:
+    - Updated the pinned `constitution/` submodule from `v1.20.0` to Constitution `1.29.0` on `main`.
+    - Added Constitution adoption guardrails for version checks, compliance checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
+    - Added project-specific product requirements, requirements traceability, and test plan documentation.
+    - Replaced template setup, command reference, troubleshooting, architecture, operations, and roadmap content with SSH Device Manager-specific guidance.
+- **Structured Output Export**:
+    - Added an `Export JSON` control for terminal output.
+    - Exported payloads include a format ID, UTC timestamp, line count, line list, and raw output text for downstream troubleshooting or audit workflows.
 - **Controller Layer Refactor**:
     - Added `ssh_device_manager/controllers/` with focused controllers for connection lifecycle, SSH actions/uploads, profile CRUD, and sections loading/rendering/watching.
     - Added `constants.py` to centralize shared app constants.
@@ -86,6 +87,8 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 - **Test Count**: 19 → 158 tests (142 unit + 16 integration).
 
 ### Fixed
+- **Host History Accuracy**:
+    - Host history now records only successful SSH connections, preventing failed or mistyped hosts from polluting the dropdown.
 - **Pylint CI Stability**:
     - Fixed `E0602` in `ssh_device_manager/app.py` by importing `queue` where `queue.Queue()` is used.
     - Updated `SSH_DeviceManager.py` launcher lint issues (split imports, added `main()` docstring, and exception chaining with `raise SystemExit(1) from exc`).

@@ -1,3 +1,4 @@
 [submodule "constitution"]
 	path = constitution
-	url = git@github.com:esanacore/engineering-constitution.git
+	url = https://github.com/esanacore/engineering-constitution.git
+	branch = main

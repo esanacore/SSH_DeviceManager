@@ -66,8 +66,8 @@
 | ToolTip | `TestToolTip` | 6 | Unit |
 | SSH Manager | `TestSSHManager` | 15 | Unit |
 | SSH Manager Reconnect | `TestSSHManagerReconnect` | 1 | Unit |
-| GUI App Core | `TestSSHGuiApp` | 18 | Unit |
-| Output Manager | `TestOutputManager` | 9 | Unit |
+| GUI App Core | `TestSSHGuiApp` | 19 | Unit |
+| Output Manager | `TestOutputManager` | 12 | Unit |
 | Paramiko Compat Stub | `TestParamikoCompatStub` | 7 | Unit |
 | Input Validation | `TestGetConnectionInputs` | 10 | Unit |
 | Connect Errors | `TestOnConnectErrors` | 4 | Unit |
@@ -83,7 +83,7 @@
 | Connection State | `TestConnectionStateMonitor` | 2 | Unit |
 | Connection Controller | `TestConnectionControllerGaps` | 4 | Unit |
 | Connection Monitor Poll | `TestConnectionMonitorPoll` | 1 | Unit |
-| Host History | `TestHostHistory` | 2 | Unit |
+| Host History | `TestHostHistory` | 3 | Unit |
 | Action Controller Upload | `TestActionControllerPerformUpload` | 6 | Unit |
 | Sections Controller | `TestSectionsController` | 8 | Unit |
 | Sections Loader Empty Cmd | `TestSectionsLoaderEmptyCommand` | 1 | Unit |
@@ -102,7 +102,8 @@
 | Config File I/O | `TestAppConfigRoundTrip` | 2 | Integration |
 | Host History Limit | `TestHostHistoryLimit` | 1 | Integration |
 | Credential Clearing | `TestDisconnectClearsCredentials` | 2 | Integration |
-| **TOTAL** | **41 classes** | **158** | |
+| Customizer | `test_customizer.TestCustomizerApp` | 13 | Unit |
+| **TOTAL** | **42 classes** | **176** | |
 
 ---
 
@@ -174,6 +175,7 @@
 | UT-APP-16 | `test_upload_config_template_cancelled` | Upload when file dialog cancelled | `ssh.upload_file` not called |
 | UT-APP-17 | `test_log_message_has_timestamp` | Verify log message format | Queued message matches `[HH:MM:SS]` timestamp pattern |
 | UT-APP-18 | `test_append_output_uses_output_manager_public_append` | Append output delegation | Uses OutputManager public append method |
+| UT-APP-19 | `test_export_output_json` | Export output to structured JSON | File dialog invoked, JSON file opened, format ID, lines, line count, and raw text written |
 
 ### 6. Output Manager
 
@@ -188,6 +190,9 @@
 | UT-OM-07 | `test_save_no_file_chosen_does_not_write` | Save with cancelled dialog | No file written |
 | UT-OM-08 | `test_save_write_error_logs_error` | Save with write error | Error logged |
 | UT-OM-09 | `test_start_poller_drains_queue_into_widget` | Start log poller | Queue drained into text widget |
+| UT-OM-10 | `test_build_structured_output_keeps_text_and_lines` | Build structured output payload | Format ID, export timestamp, split lines, line count, and raw text are preserved |
+| UT-OM-11 | `test_export_json_writes_structured_output_and_logs_ok` | Export output as JSON | Structured payload is written and success is logged |
+| UT-OM-12 | `test_export_json_empty_output_shows_warning` | Export empty output | Warning shown, no file written |
 
 ### 7. Paramiko Compat Stub
 

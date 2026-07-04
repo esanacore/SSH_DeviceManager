@@ -578,6 +578,25 @@ class TestSSHGuiApp(unittest.TestCase):
             log_messages = [c[0][0] for c in app.log.call_args_list]
             self.assertTrue(any("ERROR" in m and "disk full" in m for m in log_messages))
 
+    def test_export_output_json(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.output_text = MagicMock()
+        app.output_text.get.return_value = "[12:00:00] connected\nshow version"
+        app.log = MagicMock()
+
+        SSH_DeviceManager.filedialog.asksaveasfilename.return_value = "/tmp/output.json"
+
+        with patch("builtins.open", unittest.mock.mock_open()) as mock_file:
+            app.export_output_json()
+
+        mock_file.assert_called_with("/tmp/output.json", "w", encoding="utf-8")
+        written = "".join(call.args[0] for call in mock_file().write.call_args_list)
+        payload = json.loads(written)
+        self.assertEqual(payload["format"], "ssh-device-manager-output-v1")
+        self.assertEqual(payload["line_count"], 2)
+        self.assertEqual(payload["lines"], ["[12:00:00] connected", "show version"])
+        self.assertEqual(payload["text"], "[12:00:00] connected\nshow version")
+
     def test_clear_output(self):
         app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
         app.output_text = MagicMock()
@@ -1093,7 +1112,30 @@ class TestHostHistory(unittest.TestCase):
         app.ssh = MagicMock()
         app.log = MagicMock()
         app.on_connect()
+        target = mock_thread.call_args[1]["target"]
+        target()
         self.assertIn("newhost.example.com", app.host_history)
+
+    @patch('SSH_DeviceManager.threading.Thread')
+    def test_failed_connect_does_not_add_to_host_history(self, mock_thread):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.host_var.get.return_value = "badhost.example.com"
+        app.user_var.get.return_value = "admin"
+        app.port_var.get.return_value = 22
+        app.pass_var.get.return_value = "bad-password"
+        app.timeout_var.get.return_value = 10
+        app.ssh = MagicMock()
+        app.ssh.connect.side_effect = SSH_DeviceManager.paramiko.AuthenticationException(
+            "bad creds"
+        )
+        app.log = MagicMock()
+        app._set_connected_ui = MagicMock()
+
+        app.on_connect()
+        target = mock_thread.call_args[1]["target"]
+        target()
+
+        self.assertNotIn("badhost.example.com", app.host_history)
 
 
 # =========================================================================
@@ -1550,6 +1592,8 @@ class TestHostHistoryLimit(unittest.TestCase):
             app.host_var.get.return_value = f"host-{i}.example.com"
             mock_thread.reset_mock()
             app.on_connect()
+            target = mock_thread.call_args[1]["target"]
+            target()
 
         self.assertLessEqual(len(app.host_history), 10)
         # Most recent should be first
@@ -1682,6 +1726,47 @@ class TestOutputManager(unittest.TestCase):
         msg = manager.log_queue.get_nowait()
         self.assertIn("[ERROR]", msg)
         self.assertIn("disk full", msg)
+
+    def test_build_structured_output_keeps_text_and_lines(self):
+        from ssh_device_manager.output import build_structured_output
+        payload = build_structured_output(
+            "first line\nsecond line",
+            exported_at="2026-07-04T12:00:00+00:00",
+        )
+        self.assertEqual(payload["format"], "ssh-device-manager-output-v1")
+        self.assertEqual(payload["exported_at"], "2026-07-04T12:00:00+00:00")
+        self.assertEqual(payload["line_count"], 2)
+        self.assertEqual(payload["lines"], ["first line", "second line"])
+        self.assertEqual(payload["text"], "first line\nsecond line")
+
+    def test_export_json_writes_structured_output_and_logs_ok(self):
+        from ssh_device_manager import output as out_mod
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "[12:00:00] connected\nshow version"
+        with patch.object(out_mod.filedialog, "asksaveasfilename", return_value="/tmp/out.json"), \
+             patch("builtins.open", unittest.mock.mock_open()) as mock_open:
+            manager.export_json()
+        mock_open.assert_called_with("/tmp/out.json", "w", encoding="utf-8")
+        written = "".join(call.args[0] for call in mock_open().write.call_args_list)
+        payload = json.loads(written)
+        self.assertEqual(payload["format"], "ssh-device-manager-output-v1")
+        self.assertEqual(payload["line_count"], 2)
+        self.assertEqual(payload["lines"], ["[12:00:00] connected", "show version"])
+        self.assertEqual(payload["text"], "[12:00:00] connected\nshow version")
+        self.assertFalse(manager.log_queue.empty())
+        msg = manager.log_queue.get_nowait()
+        self.assertIn("[OK]", msg)
+        self.assertIn("exported", msg)
+
+    def test_export_json_empty_output_shows_warning(self):
+        from ssh_device_manager import output as out_mod
+        manager, mock_text = self._make_manager()
+        mock_text.get.return_value = "   "
+        with patch.object(out_mod.messagebox, "showwarning") as mock_warn, \
+             patch("builtins.open", unittest.mock.mock_open()) as mock_open:
+            manager.export_json()
+        mock_warn.assert_called_once()
+        mock_open.assert_not_called()
 
     def test_start_poller_drains_queue_into_widget(self):
         from ssh_device_manager.output import OutputManager
@@ -2630,7 +2715,7 @@ class TestParamikoCompatStub(unittest.TestCase):
         client.load_system_host_keys()
         client.set_missing_host_key_policy(None)
         with self.assertRaises(ModuleNotFoundError):
-            client.connect()
+            client.connect(hostname="host")
 
     def test_stub_ssh_client_exec_command_raises(self):
         stub = self._get_stub_paramiko()

@@ -4,10 +4,26 @@ This module provides the OutputManager class, which handles all interactions
 with the terminal output text widget in a thread-safe manner.
 """
 
+import json
 import queue
 import time
 import tkinter as tk
+from datetime import datetime, timezone
 from tkinter import filedialog, messagebox
+
+
+STRUCTURED_OUTPUT_FORMAT = "ssh-device-manager-output-v1"
+
+
+def build_structured_output(text: str, exported_at: str | None = None) -> dict:
+    """Builds a stable JSON-serializable output export payload."""
+    return {
+        "format": STRUCTURED_OUTPUT_FORMAT,
+        "exported_at": exported_at or datetime.now(timezone.utc).isoformat(),
+        "line_count": len(text.splitlines()),
+        "lines": text.splitlines(),
+        "text": text,
+    }
 
 
 class OutputManager:
@@ -112,3 +128,25 @@ class OutputManager:
                 self.log(f"[OK] Output saved to {file_path}")
             except Exception as e:
                 self.log(f"[ERROR] Failed to save output: {e}")
+
+    def export_json(self):
+        """Opens a file dialog to export the output text as structured JSON."""
+        text = self.output_text.get("1.0", "end-1c")
+
+        if not text.strip():
+            messagebox.showwarning("Empty Output", "Nothing to export.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+
+        if file_path:
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(build_structured_output(text), f, indent=2)
+                    f.write("\n")
+                self.log(f"[OK] Output exported to {file_path}")
+            except Exception as e:
+                self.log(f"[ERROR] Failed to export output: {e}")

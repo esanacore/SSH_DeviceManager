@@ -10,12 +10,13 @@ import time
 import tkinter as tk
 from datetime import datetime, timezone
 from tkinter import filedialog, messagebox
+from typing import Optional
 
 
 STRUCTURED_OUTPUT_FORMAT = "ssh-device-manager-output-v1"
 
 
-def build_structured_output(text: str, exported_at: str | None = None) -> dict:
+def build_structured_output(text: str, exported_at: Optional[str] = None) -> dict:
     """Builds a stable JSON-serializable output export payload."""
     return {
         "format": STRUCTURED_OUTPUT_FORMAT,

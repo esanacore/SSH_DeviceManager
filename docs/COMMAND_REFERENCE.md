@@ -1,24 +1,51 @@
 # Command Reference
 
-This document provides a quick reference for common commands used in this project.
+## Application
 
-## Development
+```bash
+python SSH_DeviceManager.py
+```
 
-- `npm run dev`: Start the development server.
-- `npm run build`: Build the project for production.
+Starts the SSH Device Manager GUI.
+
+```bash
+python customizer.py
+```
+
+Starts the visual `sections.json` editor.
 
 ## Testing
 
-- `npm test`: Run all tests.
-- `npm run test:watch`: Run tests in watch mode.
-- `npm run test:coverage`: Run tests and generate a coverage report.
+```bash
+python -m unittest test_SSH_DeviceManager.py test_customizer.py -v
+```
 
-## Linting & Formatting
+Runs the full local suite.
 
-- `npm run lint`: Run the linter.
-- `npm run format`: Format the code.
+```bash
+python -m unittest test_SSH_DeviceManager.TestHostHistory test_SSH_DeviceManager.TestHostHistoryLimit -v
+```
 
-## Operations
+Runs the focused host-history regression tests.
 
-- `npm start`: Start the production server.
-- <!-- Add more project-specific commands here -->
+## Linting
+
+```bash
+pylint $(git ls-files '*.py')
+```
+
+Runs the repository lint command used by CI-style validation. On Windows PowerShell, use Git Bash or another shell that supports command substitution.
+
+## Constitution Checks
+
+```bash
+"C:\Program Files\Git\bin\bash.exe" constitution/scripts/check_compliance.sh --strict --product .
+```
+
+Checks required, recommended, and product-facing Constitution files.
+
+```bash
+"C:\Program Files\Git\bin\bash.exe" constitution/scripts/check_traceability.sh docs/PRODUCT_REQUIREMENTS.md docs/REQUIREMENTS_TRACEABILITY.md
+```
+
+Verifies every requirement ID has traceability evidence.

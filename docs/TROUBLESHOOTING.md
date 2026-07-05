@@ -1,25 +1,47 @@
 # Troubleshooting
 
-This guide helps diagnose and fix common issues in the project.
+## App Does Not Open
 
-## Common Issues
+- **Symptoms**: Double-clicking or running `python SSH_DeviceManager.py` exits without a visible window.
+- **Cause**: Startup exception, missing Tkinter, or an import/runtime problem.
+- **Fix**: Open `ssh_device_manager_startup_error.log` in the project root and inspect the traceback. Then run from a terminal with `python SSH_DeviceManager.py` to see stderr output.
 
-### Issue A: <!-- Title -->
+## Paramiko Is Missing
 
-- **Symptoms**: <!-- Description of the error -->
-- **Cause**: <!-- Why it happens -->
-- **Fix**: <!-- Step-by-step resolution -->
+- **Symptoms**: Real connections fail immediately with a message that Paramiko is not installed.
+- **Cause**: The active Python environment does not include Paramiko.
+- **Fix**:
 
-### Issue B: <!-- Title -->
+```bash
+pip install paramiko
+```
 
-- **Symptoms**: <!-- Description of the error -->
-- **Cause**: <!-- Why it happens -->
-- **Fix**: <!-- Step-by-step resolution -->
+The tests use a compatibility shim, but real SSH/SFTP use requires the package.
 
-## Environment Reset
+## Unknown Host Key Prompts Or Warnings
 
-If your environment is in a broken state, try the following:
+- **Symptoms**: First connection to a host warns about an unknown host key, or strict mode rejects the host.
+- **Cause**: The host key is not in the user's system known-hosts file.
+- **Fix**: Prefer adding the host key through a trusted SSH workflow before using strict mode. Use `warning` for first-use visibility or `auto` only in trusted lab environments.
 
-1. Remove dependencies: `rm -rf node_modules` (or equivalent).
-2. Clear cache: `npm cache clean --force`.
-3. Reinstall: `npm install`.
+## Failed Hosts Appear In History
+
+- **Symptoms**: A mistyped host remains in the host dropdown.
+- **Cause**: Older versions remembered hosts before the connection succeeded.
+- **Fix**: Use the current version, which records host history only after successful connection. Select `<Clear History>` to reset existing local history.
+
+## `sections.json` Changes Do Not Appear
+
+- **Symptoms**: The action panel still shows older buttons.
+- **Cause**: The active sections file was not saved, has invalid JSON, or the watcher has not observed the timestamp change yet.
+- **Fix**: Save the file, validate it as JSON, then use **Config > Reload Sections** in the app.
+
+## Windows Cannot Run Bash Commands
+
+- **Symptoms**: `bash` opens WSL errors or reports no distribution installed.
+- **Cause**: Plain `bash` resolves to the Windows WSL shim.
+- **Fix**: Use Git Bash explicitly:
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' constitution/scripts/check_compliance.sh --strict --product .
+```

@@ -1,40 +1,32 @@
 # Requirements Traceability Matrix
 
-This matrix links each SSH Device Manager requirement to the automated evidence
-that currently verifies it.
-
-Related documents:
-
-- `docs/PRODUCT_REQUIREMENTS.md`
-- `docs/TEST_PLAN.md`
-- `docs/TEST_MATRIX.md`
+This matrix maps each product requirement to current verification evidence. Update it when adding requirements, changing behavior, or adding tests.
 
 ## Functional Requirements
 
-| Requirement ID | Level | Description | Acceptance Criteria | Verifying Tests | Status |
-| --- | --- | --- | --- | --- | --- |
-| FR-001 | MUST | Connect and disconnect with explicit connection inputs and host-key mode. | `FR-001-AC-1`, `FR-001-AC-2`, `FR-001-AC-3` | `UT-APP-02`, `UT-APP-03`, `UT-VAL-01` through `UT-VAL-10`, `UT-SSH-05`, `UT-SSH-06`, `UT-SSH-13`, `IT-LC-01`, `IT-VB-01`, `IT-DC-01`, `IT-DC-02` | Verified |
-| FR-002 | MUST | Run predefined and ad hoc SSH commands with visible combined output. | `FR-002-AC-1`, `FR-002-AC-2`, `FR-002-AC-3` | `UT-SSH-08`, `UT-SSH-09`, `UT-SSH-10`, `UT-SSH-12`, `UT-APP-05`, `UT-APP-14`, `IT-LC-01`, `IT-CH-01`, `IT-CF-01` | Verified |
-| FR-003 | MUST | Transfer files over SFTP for template and selected uploads. | `FR-003-AC-1`, `FR-003-AC-2` | `UT-SSH-11`, `UT-SSH-14`, `UT-SSH-15`, `UT-APP-06`, `UT-APP-15`, `UT-APP-16`, `UT-AC-01` through `UT-AC-06` | Verified |
-| FR-004 | MUST | Persist connection profiles and bounded host history. | `FR-004-AC-1`, `FR-004-AC-2` | `UT-PR-01` through `UT-PR-08`, `UT-HH-01`, `UT-HH-02`, `IT-PW-01`, `IT-CR-01`, `IT-HL-01` | Verified |
-| FR-005 | MUST | Load and reload `sections.json` safely. | `FR-005-AC-1`, `FR-005-AC-2`, `FR-005-AC-3` | `UT-SC-01` through `UT-SC-08`, `UT-SLE-01`, `UT-SW-01`, `UT-SW-02`, `UT-BBS-01`, `UT-BBS-02`, `CT-03`, `CT-04`, `IT-35` | Verified |
-| FR-006 | SHOULD | Support standalone maintenance of `sections.json` through `customizer.py`. | `FR-006-AC-1`, `FR-006-AC-2` | `README.md` launch instructions, config reload tests `UT-SW-01`, `UT-SW-02`, `IT-35` | In Progress |
+| Requirement ID | Level | Acceptance Criteria | Verifying Tests | Status |
+| --- | --- | --- | --- | --- |
+| FR-001 | MUST | Validate connection inputs and connect with host-key policy. | `TestGetConnectionInputs`, `TestParseIntInput`, `TestGetHostKeyMode`, `TestSSHManager.test_connect`, `TestSSHManager.test_connect_host_key_policies`, `TestOnConnectErrors` | Verified |
+| FR-002 | MUST | Run commands only when connected and preserve output/history behavior. | `TestSSHGuiApp.test_run_ssh_command`, `TestSSHGuiApp.test_run_ssh_command_not_connected`, `TestSSHManager.test_run_command_with_stderr`, `TestCommandHistoryIntegration` | Verified |
+| FR-003 | MUST | Upload files only when connected and handle success/failure/cancel paths. | `TestActionControllerPerformUpload`, `TestSSHGuiApp.test_upload_config_template`, `TestSSHManager.test_upload_file`, `TestSSHManager.test_upload_file_not_connected` | Verified |
+| FR-004 | SHOULD | Load and validate configurable action sections. | `TestSectionsJsonLoading`, `TestSectionsController`, `TestContracts.test_sections_json_conforms_to_schema`, `TestContracts.test_sections_json_commands_are_valid_tokens` | Verified |
+| FR-005 | SHOULD | Edit section/action config through the customizer. | `test_customizer.TestCustomizerApp` | Verified |
+| FR-006 | SHOULD | Save, load, delete, and refresh profiles without passwords. | `TestProfiles`, `TestProfileWorkflow`, `test_delete_selected_profile_no_selection_warns`, `test_load_selected_profile_no_selection_warns`, `test_refresh_profile_list_empty_clears_selection`, `test_refresh_profile_list_keeps_valid_selection`, `TestContracts.test_profile_schema_round_trip` | Verified |
+| FR-007 | SHOULD | Remember only successful hosts, keep recent-first order, cap at 10, and clear history. | `TestHostHistory.test_connect_adds_to_host_history`, `TestHostHistory.test_failed_connect_does_not_add_to_host_history`, `TestHostHistoryLimit.test_history_capped_at_10`, `TestHostHistory.test_on_host_selected_clear` | Verified |
+| FR-008 | SHOULD | Append, timestamp, copy, clear, save, and structured-export output. | `TestOutputManager`, `TestOutputManager.test_build_structured_output_keeps_text_and_lines`, `TestOutputManager.test_export_json_writes_structured_output_and_logs_ok`, `TestOutputManager.test_export_json_empty_output_shows_warning`, `TestSSHGuiApp.test_clear_output`, `TestSSHGuiApp.test_copy_output`, `TestSSHGuiApp.test_save_output`, `TestSSHGuiApp.test_export_output_json` | Verified |
 
 ## Non-Functional Requirements
 
-| Requirement ID | Level | Description | Acceptance Criteria | Verifying Tests | Status |
-| --- | --- | --- | --- | --- | --- |
-| NFR-001 | MUST | Keep trust behavior explicit and keep secrets out of UI metadata. | `NFR-001-AC-1`, `NFR-001-AC-2` | `UT-SSH-13`, `CT-04`, README security notes, docs/COMMAND_REFERENCE.md guidance | Verified |
-| NFR-002 | MUST | Fail safely on dropped connections, broken config, or startup/runtime errors. | `NFR-002-AC-1`, `NFR-002-AC-2` | `UT-SSH-03`, `UT-SSH-04`, `UT-CS-01`, `UT-CS-02`, `UT-CE-01` through `UT-CE-04`, `UT-TE-01` through `UT-TE-03`, `UT-SE-01`, `IT-AF-01`, `IT-SJ-02` through `IT-SJ-04`, `IT-CF-01`, `IT-CR-02` | Verified |
-| NFR-003 | SHOULD | Keep the UI responsive and log updates thread-safe. | `NFR-003-AC-1`, `NFR-003-AC-2` | `UT-APP-02`, `UT-APP-04`, `UT-APP-05`, `UT-APP-06`, `UT-OM-01` through `UT-OM-09` | Verified |
-| NFR-004 | MUST | Preserve deterministic automated coverage for core logic and keep docs aligned. | `NFR-004-AC-1`, `NFR-004-AC-2` | `python -m unittest test_SSH_DeviceManager.py -v`, `docs/TEST_MATRIX.md`, `docs/TEST_PLAN.md`, `TODO.md` | In Progress |
+| Requirement ID | Level | Acceptance Criteria | Verifying Tests | Status |
+| --- | --- | --- | --- | --- |
+| NFR-001 | MUST | Keep UI responsive through threaded network work and queue-backed logs. | `TestSSHGuiApp.test_on_connect`, `TestSSHGuiApp.test_run_ssh_command`, `TestActionControllerPerformUpload`, `TestOutputManager.test_start_poller_drains_queue_into_widget` | Verified |
+| NFR-002 | MUST | Avoid password persistence and make host-key trust explicit. | `TestDisconnectClearsCredentials`, `TestSSHManager.test_connect_host_key_policies`, `TestGetHostKeyMode`, `TestContracts.test_profile_schema_round_trip` | Verified |
+| NFR-003 | SHOULD | Run deterministic tests without real SSH devices. | Full suite: `python -m unittest test_SSH_DeviceManager.py test_customizer.py -v` | Verified |
+| NFR-004 | SHOULD | Preserve launcher import compatibility. | `TestShimExports` | Verified |
 
-## Coverage Summary
+## Coverage Gap Summary
 
-| Metric | Count |
-| --- | --- |
-| Total requirements | 10 |
-| Verified | 8 |
-| In progress | 2 |
-| Not started | 0 |
-| Requirements without a verifying test (gaps) | 1 |
+| Status | Count |
+| --- | ---: |
+| Requirements with verifying tests | 12 |
+| Requirements without verifying tests | 0 |

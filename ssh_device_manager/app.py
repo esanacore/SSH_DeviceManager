@@ -26,7 +26,7 @@ from .output import OutputManager
 from .validation import parse_int_input, get_connection_inputs, get_host_key_mode
 
 
-class SSHGuiApp(tk.Tk):
+class SSHGuiApp(tk.Tk):  # pylint: disable=too-many-public-methods
     """The main SSH Device Manager Tkinter application.
 
     This class manages the UI layout and state, delegating logic to various
@@ -292,6 +292,12 @@ class SSHGuiApp(tk.Tk):
         tk.Button(controls, text="Clear Output", command=self.clear_output).grid(row=0, column=0, sticky="w")
         tk.Button(controls, text="Copy Output", command=self.copy_output).grid(row=0, column=1, sticky="w", padx=(8, 0))
         tk.Button(controls, text="Save Output", command=self.save_output).grid(row=0, column=2, sticky="w", padx=(8, 0))
+        tk.Button(controls, text="Export JSON", command=self.export_output_json).grid(
+            row=0,
+            column=3,
+            sticky="w",
+            padx=(8, 0),
+        )
 
     # -------------------------
     # Theme Management
@@ -638,6 +644,11 @@ Tips:
                 self.log(f"[OK] Output saved to {file_path}")
             except Exception as exc:
                 self.log(f"[ERROR] Failed to save output: {exc}")
+
+    def export_output_json(self):
+        """Prompts the user to export the terminal output as structured JSON."""
+        self._sync_output_manager_widget()
+        self.output_manager.export_json()
     # pylint: enable=duplicate-code
 
     def _get_mtime(self, path: str):

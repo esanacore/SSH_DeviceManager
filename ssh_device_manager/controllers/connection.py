@@ -50,6 +50,15 @@ class ConnectionController:
         if notify_on_drop and not connected and not was_connecting:
             self.app.log("[WARN] SSH session is no longer active.")
 
+    def _remember_successful_host(self, host: str):
+        """Adds a host to recent history after a successful connection."""
+        if host in self.app.host_history:
+            self.app.host_history.remove(host)
+        self.app.host_history.insert(0, host)
+        if len(self.app.host_history) > 10:
+            self.app.host_history.pop()
+        self.app.host_combo["values"] = self.app.host_history + ["<Clear History>"]
+
     def start_connection_monitor(self):
         """Poll connection state through Tk's event loop.
 
@@ -77,12 +86,6 @@ class ConnectionController:
             messagebox.showwarning("In Progress", "Connection attempt already in progress.")
             return
 
-        if host not in self.app.host_history:
-            self.app.host_history.insert(0, host)
-            if len(self.app.host_history) > 10:
-                self.app.host_history.pop()
-            self.app.host_combo["values"] = self.app.host_history + ["<Clear History>"]
-
         host_key_mode = self.app._get_host_key_mode()
         self.app.log(f"Connecting to {host}:{port} as {user}...")
         self.app.is_connecting = True
@@ -100,6 +103,7 @@ class ConnectionController:
                 )
                 self.app.log("[OK] Connected.")
                 self.app.log(f"[INFO] Host key policy: {host_key_mode}.")
+                self._remember_successful_host(host)
                 self.app._set_connected_ui(True)
             except paramiko.AuthenticationException:
                 self.app.log(

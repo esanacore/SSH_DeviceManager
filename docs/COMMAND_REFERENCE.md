@@ -49,3 +49,9 @@ Checks required, recommended, and product-facing Constitution files.
 ```
 
 Verifies every requirement ID has traceability evidence.
+
+```bash
+"C:\Program Files\Git\bin\bash.exe" constitution/scripts/check_version_alignment.sh
+```
+
+Verifies that local governance files do not mention stale Constitution versions.

@@ -54,6 +54,7 @@ Line coverage is not currently measured in CI. The near-term target is to add a 
 | 2026-06-30 | `Ran 171 tests in 0.515s` / `OK` | Baseline before host-history regression fix in `codex/constitution-hardening`. |
 | 2026-06-30 | `Ran 172 tests in 0.634s` / `OK` | Full suite after host-history regression fix and Constitution documentation updates. |
 | 2026-07-04 | `Ran 176 tests in 0.518s` / `OK` | Full suite after structured JSON output export and Constitution 1.29.0 alignment updates. |
+| 2026-07-14 | `Ran 176 tests in 1.114s` / `OK` | Full suite after Constitution `v1.33.0` refresh and README alignment cleanup. |
 
 ## Coverage Gap Log
 

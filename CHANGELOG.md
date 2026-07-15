@@ -6,7 +6,6 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 
 ### Added
 - **Engineering Constitution Completion**:
-    - Updated the pinned `constitution/` submodule from `v1.20.0` to Constitution `1.29.0` on `main`.
     - Added Constitution adoption guardrails for version checks, compliance checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
     - Added project-specific product requirements, requirements traceability, and test plan documentation.
     - Replaced template setup, command reference, troubleshooting, architecture, operations, and roadmap content with SSH Device Manager-specific guidance.
@@ -75,6 +74,7 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - `SSHManager` public interface contract (`CT-06`), controller interface contract (`CT-07`).
 
 ### Changed
+- Refreshed the pinned `constitution/` submodule from Constitution `1.30.0` to the tagged `v1.33.0` release and updated README adoption metadata to match.
 - **App Composition**:
     - Reduced `SSHGuiApp` so it acts primarily as the Tkinter composition root and delegates major behaviors to controllers.
     - Kept the existing public `SSHGuiApp` methods and the top-level `SSH_DeviceManager.py` shim stable for backward compatibility and test compatibility.

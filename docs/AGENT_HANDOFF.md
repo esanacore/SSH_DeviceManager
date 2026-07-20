@@ -22,7 +22,17 @@ Use this file to leave concise context for the next human or AI agent working on
    python -m unittest test_SSH_DeviceManager test_customizer -v
    ```
 
-## Last Session — 2026-07-19: Constitution 1.39.0 Update
+## Last Session — 2026-07-19: Operator Guidance Salvage
+
+- **Branch**: `docs/salvage-operator-guidance`.
+- **Scope**: Documentation only. No code, workflow, or submodule changes.
+- **What**: Recovered commit `fcfe4ec` from `codex-ops-roadmap-docs` — 335 lines of operator documentation written 2026-06-30 that never reached `main` and had no pull request tracking it. Ported as fresh edits, not a merge: the branch is 14 commits behind and predates this sequence of Constitution adoption work entirely.
+- **Method worth reusing**: each file was compared in *both* directions before deciding. `main` was better for `TROUBLESHOOTING.md` and `COMMAND_REFERENCE.md`, so most of the branch's versions were dropped; the branch was better for `OPERATIONS.md` and `SECURITY.md`. Its install instructions (Python 3.10 floor, `pip install paramiko`) were rejected outright as stale — porting them would have regressed documentation corrected earlier in this sequence.
+- **Two carried-over claims were verified, not trusted**: `paramiko_compat.py` really is a stub fallback, and `TestContracts` really does cover `sections.json` schema (CT-03) and command tokens.
+- **The branch and worktree are intentionally still in place.** Its committed content is salvaged, but whether the worktree holds *uncommitted* work beyond `fcfe4ec` is unknown — it is owned by the `KITT/CodexSandboxOffline` account and needs a `safe.directory` exception to read. The branch has no remote, so deleting it discards the commit outright. Tracked in `TODO.md` under Documentation.
+- **Verification**: 176 tests pass; compliance `--strict --product`, secrets, OTS, env-vars, and architecture all pass under `--strict`; version alignment 0 mismatches; traceability 12/12; all internal document links resolve.
+
+## Earlier Session — 2026-07-19: Constitution 1.39.0 Update
 
 - **Branch**: `chore/constitution-1.39.0`.
 - **Scope**: Governance only. No runtime behavior changed.

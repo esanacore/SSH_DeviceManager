@@ -23,27 +23,37 @@ Related documents:
 
 ## Dependency Manifest Status
 
-This repository does **not** yet declare a dependency manifest. Paramiko is currently installed
-ad hoc (`pip install paramiko` in `.github/workflows/ci.yml` and
-`.github/workflows/constitution-tests.yml`) rather than pinned in `requirements.txt` or
-`pyproject.toml`.
+This repository declares its dependencies in **`pyproject.toml`** (PEP 621), which is the single
+source of truth. `constitution/scripts/check_ots_inventory.sh` reads the `[project] dependencies`
+array from it and cross-checks each entry against the Managed Dependencies table below.
 
-Because `constitution/scripts/check_ots_inventory.sh` cross-checks manifests against the table
-below, it currently has no manifest to read and therefore reports nothing to verify. That is a
-gap in the manifest, not in this inventory — the `paramiko` row below is already named to match
-what a future manifest will declare, so the checker will bind to it as soon as one exists.
+Contributor tooling lives in the `dev` optional-dependency extra rather than in the runtime
+dependency array, deliberately: the checker reads only runtime dependencies, so development-time
+tools are not reported as shipped components. They are still recorded below as system-level OTS
+for completeness.
 
-Adding the manifest is tracked in `TODO.md` under Technical Debt.
+Two consequences of the declared `requires-python = ">=3.8"` floor are worth stating plainly
+rather than leaving implicit:
+
+- **Python 3.8 reached end of life in October 2024** and no longer receives security fixes. The
+  floor exists because commit `e103746` deliberately restored 3.8 typing compatibility and
+  `.github/workflows/pylint.yml` lints against it. Raising the floor to 3.9 would let the project
+  drop an EOL runtime and require Paramiko 4.x uniformly — see the Review Cadence note below.
+- **Anyone installing on Python 3.8 silently receives the Paramiko 3.x line**, not 4.x, because
+  Paramiko 4.x declares `requires-python >=3.9`. The dependency is specified as `paramiko>=3.4`
+  with an open ceiling precisely so pip can resolve the newest release each interpreter supports.
+  This means the security posture of a 3.8 install differs from a 3.9+ install; assess Paramiko
+  advisories against **both** lines while the 3.8 floor stands.
 
 ## Managed Dependencies
 
-Components that are (or will be) declared in a dependency manifest in this repository.
+Components declared in a dependency manifest in this repository.
 `constitution/scripts/check_ots_inventory.sh` cross-checks the manifests against this table, so a
 dependency added without a row here is flagged.
 
 | Component ID | Name | Version | Supplier / Maintainer | Purpose | Risk | Verification | Anomaly Review | Update Policy | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OTS-001 | `paramiko` | 4.0.0 (installed); unpinned in CI | Paramiko project (Jeff Forcier / community), LGPL-2.1 | SSH transport, authentication, remote command execution, and SFTP upload — the entire remote-device capability of this application | High | Exercised throughout the suite via mocked `SSHManager` unit, controller, contract, and integration-style tests (`test_SSH_DeviceManager.py`); mature upstream project with its own extensive test suite. No live-device verification yet — see GAP-002 in `docs/TEST_PLAN.md` | [GitHub advisories](https://github.com/paramiko/paramiko/security/advisories) / [CVE search](https://nvd.nist.gov/vuln/search/results?query=paramiko) — last reviewed 2026-07-19 | Currently unpinned; to become manifest-pinned and Dependabot-managed once a manifest exists | Active |
+| OTS-001 | `paramiko` | Declared `>=3.4` in `pyproject.toml`. Resolves to 3.5.x on Python 3.8 and 4.x on 3.9+; 4.0.0 on the current dev machine | Paramiko project (Jeff Forcier / community), LGPL-2.1 | SSH transport, authentication, remote command execution, and SFTP upload — the entire remote-device capability of this application | High | Exercised throughout the suite via mocked `SSHManager` unit, controller, contract, and integration-style tests (`test_SSH_DeviceManager.py`); mature upstream project with its own extensive test suite. `.github/workflows/ci.yml` installs from the manifest across Python 3.8–3.12, so both the 3.x and 4.x resolution paths are exercised. No live-device verification yet — see GAP-002 in `docs/TEST_PLAN.md` | [GitHub advisories](https://github.com/paramiko/paramiko/security/advisories) / [CVE search](https://nvd.nist.gov/vuln/search/results?query=paramiko) — last reviewed 2026-07-19. **Assess advisories against both the 3.x and 4.x lines** while the Python 3.8 floor stands | Open ceiling so pip resolves the newest release each interpreter supports; a Dependabot ecosystem entry for `pip` is not yet configured | Active |
 
 **Why `paramiko` is High risk**: it is the credential-handling and trust-boundary component of
 this system. It receives user passwords and key material, negotiates and validates SSH host keys,
@@ -57,9 +67,13 @@ Software the project depends on that is **not** declared in a dependency manifes
 
 | Component ID | Name | Version | Supplier / Maintainer | Purpose | Risk | Verification | Anomaly Review | Update Policy | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OTS-101 | CPython | 3.11 / 3.12 verified in CI; 3.14.0 on the current dev machine | Python Software Foundation | Language runtime for the application, `customizer.py`, and the test suite | Medium | Full suite runs green on the 3.11 and 3.12 CI matrix (`.github/workflows/ci.yml`); Python 3.8 typing compatibility was deliberately restored in commit `e103746` | [Python security advisories](https://www.python.org/news/security/) — last reviewed 2026-07-19 | Track supported CPython releases; CI matrix updated as versions reach end of life | Active |
+| OTS-101 | CPython | Declared floor `>=3.8` in `pyproject.toml`; 3.8–3.12 verified in CI; 3.14.0 on the current dev machine | Python Software Foundation | Language runtime for the application, `customizer.py`, and the test suite | Medium | Full suite runs green across the 3.8–3.12 CI matrix (`.github/workflows/ci.yml`). Before this, the suite ran on 3.11/3.12 only while `pylint.yml` linted 3.8/3.9/3.10, so commit `e103746`'s 3.8 typing-compatibility work was lint-verified but never test-verified | [Python security advisories](https://www.python.org/news/security/) — last reviewed 2026-07-19 | Track supported CPython releases; CI matrix updated as versions reach end of life. **3.8 is itself EOL since October 2024** — raising the floor to 3.9 is tracked in `TODO.md` | Active |
 | OTS-102 | Tk / Tcl (via stdlib `tkinter`) | Tk 8.6 | Tcl/Tk core team, bundled with CPython | Desktop GUI toolkit for the `SSHGuiApp` interface and `customizer.py` | Low | Contract tests cover theme keys and widget-facing interfaces; widgets are mocked rather than realized, so no display server is required in CI. Real event-loop behavior is untested — see GAP-003 in `docs/TEST_PLAN.md` | [Tcl/Tk announcements](https://www.tcl-lang.org/software/tcltk/) — last reviewed 2026-07-19 | Follows whichever Tk the installed CPython bundles | Active |
-| OTS-103 | Pylint | Configured via `.pylintrc`; unpinned | Pylint project / PyCQA | Optional static analysis for contributors and the `pylint.yml` workflow | Low | Development-time tooling only — not shipped, not on any runtime path | [Pylint releases](https://github.com/pylint-dev/pylint/releases) — last reviewed 2026-07-19 | Unpinned developer tooling; pin alongside the future dependency manifest | Active |
+| OTS-103 | Pylint | Declared in the `dev` extra of `pyproject.toml`; unpinned. Configured via `.pylintrc` | Pylint project / PyCQA | Static analysis for contributors and the `pylint.yml` workflow | Low | Development-time tooling only — not shipped, not on any runtime path. Repository currently scores 10.00/10 | [Pylint releases](https://github.com/pylint-dev/pylint/releases) — last reviewed 2026-07-19 | Unpinned; `pip install -e ".[dev]"` resolves the newest compatible release | Active |
+| OTS-104 | flake8 | Declared in the `dev` extra of `pyproject.toml`; unpinned | PyCQA | Supplementary style check in `ci.yml`'s optional lint step (`--max-line-length=120`, non-blocking) | Low | Development-time tooling only — not shipped, not on any runtime path | [flake8 releases](https://github.com/PyCQA/flake8/releases) — last reviewed 2026-07-19 | Unpinned developer tooling | Active |
+| OTS-105 | pre-commit | Declared in the `dev` extra of `pyproject.toml`; unpinned | pre-commit project | Runs the hooks in `.pre-commit-config.yaml`, including the constitution secrets sweep bound to the pre-push stage | Low | Development-time tooling only. Hooks are opt-in per machine (`pre-commit install --hook-type pre-push`); CI is the backstop | [pre-commit releases](https://github.com/pre-commit/pre-commit/releases) — last reviewed 2026-07-19 | Unpinned developer tooling | Active |
+| OTS-106 | build | Declared in the `dev` extra of `pyproject.toml`; unpinned | PyPA | PEP 517 frontend used by `python-publish.yml` to produce the sdist and wheel on release | Low | Development-time tooling only. Verified locally: `python -m build` produces `ssh_device_manager-0.3.0` sdist and wheel with correct metadata | [build releases](https://github.com/pypa/build/releases) — last reviewed 2026-07-19 | Unpinned developer tooling | Active |
+| OTS-107 | setuptools | Declared `>=61` in `pyproject.toml`'s `[build-system] requires` | PyPA | PEP 517 build backend that turns this repository into a distribution | Low | Build-time only — never imported at runtime. Exercised by every `pip install -e .` in CI across Python 3.8–3.12 | [setuptools advisories](https://github.com/pypa/setuptools/security) — last reviewed 2026-07-19 | Floor is `>=61` for PEP 621 support. **Do not raise it above 75.3.x while the Python 3.8 floor stands** — setuptools dropped 3.8 after 75.3.4, so a higher floor makes the project uninstallable on 3.8 | Active |
 
 ## Review Cadence
 

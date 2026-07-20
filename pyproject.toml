@@ -1,0 +1,98 @@
+[build-system]
+# setuptools>=61 is the floor for PEP 621 metadata and dynamic version-from-file.
+# The ceiling matters more than the floor here: setuptools dropped Python 3.8
+# after 75.3.x, so anything >=76 is uninstallable on the 3.8 interpreter this
+# project supports. Requiring >=77 (as the PEP 639 SPDX `license` field would
+# have needed) breaks `pip install` on 3.8 outright — see the license note below.
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ssh-device-manager"
+description = "Tkinter desktop application for managing remote devices over SSH and SFTP."
+readme = "README.md"
+authors = [{ name = "Eric Sanacore" }]
+
+# The license is declared via the trove classifier below rather than the
+# `license` / `license-files` keys. The PEP 639 SPDX form needs setuptools>=77,
+# which requires Python>=3.9 and so cannot coexist with this project's 3.8
+# floor; the older `license = {file = ...}` table form is deprecated in current
+# setuptools. The classifier is unambiguous and works on every supported
+# version, and setuptools ships the LICENSE file in the distribution regardless.
+keywords = ["ssh", "sftp", "paramiko", "tkinter", "network-automation"]
+
+# Version is read from the repository's VERSION file rather than duplicated here.
+# VERSION is the single source of truth: the release workflows and
+# constitution/scripts/check_version_alignment.sh already read it, and a second
+# hand-maintained copy would be one more thing to drift.
+dynamic = ["version"]
+
+# Python 3.8 is the declared floor because commit e103746 deliberately restored
+# 3.8 typing compatibility and .github/workflows/pylint.yml lints 3.8/3.9/3.10.
+# See docs/OTS_SOFTWARE.md for the caveats that come with it.
+requires-python = ">=3.8"
+
+# Paramiko is the only third-party runtime dependency; everything else this
+# project uses is standard library (tkinter, json, queue, threading, ...).
+#
+# The floor is >=3.4 rather than >=4 on purpose. Paramiko 4.x declares
+# requires-python >=3.9, so it cannot be installed on the 3.8 floor above.
+# Leaving the ceiling open lets pip resolve the newest compatible release per
+# interpreter: paramiko 3.5.x on Python 3.8, and 4.x on 3.9+. No environment
+# markers are needed to get that behavior.
+dependencies = ["paramiko>=3.4"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Systems Administration",
+]
+
+[project.optional-dependencies]
+# Contributor tooling. Installed with: pip install -e ".[dev]"
+# These are development-time only and are intentionally not part of the runtime
+# dependency set above, so the OTS inventory checker does not treat them as
+# shipped components.
+dev = [
+    "pylint",
+    "flake8",
+    "pre-commit",
+    "build",
+]
+
+[project.urls]
+Homepage = "https://github.com/esanacore/SSH_DeviceManager"
+Repository = "https://github.com/esanacore/SSH_DeviceManager"
+Changelog = "https://github.com/esanacore/SSH_DeviceManager/blob/main/CHANGELOG.md"
+Issues = "https://github.com/esanacore/SSH_DeviceManager/issues"
+
+[project.gui-scripts]
+# A GUI script rather than a console script so Windows launches it without a
+# console window attached. main() lives in the SSH_DeviceManager.py launcher
+# shim, which is shipped as a top-level module below.
+ssh-device-manager = "SSH_DeviceManager:main"
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[tool.setuptools.packages.find]
+include = ["ssh_device_manager*"]
+
+# The root-level launcher shim and the standalone sections.json editor are
+# shipped alongside the package. SSH_DeviceManager.py is kept for backward
+# compatibility with existing `import SSH_DeviceManager` callers and is where
+# the gui-script entry point resolves.
+[tool.setuptools]
+py-modules = ["SSH_DeviceManager", "customizer"]

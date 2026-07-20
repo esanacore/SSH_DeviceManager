@@ -371,6 +371,14 @@ SSH_DeviceManager.py.bak
 SSH_DeviceManager.pyproj
 ssh_device_manager_config.json
 
+# --- Python build artifacts ----------------------------------------------
+# Produced by `python -m build` (see pyproject.toml). `dist/` and `*.egg-info`
+# were already covered by the Visual Studio template above; the root-level
+# `build/` directory was not.
+/build/
+*.egg-info/
+.eggs/
+
 # --- Secrets and credentials ---------------------------------------------
 # Recommended by constitution/scripts/check_secrets.sh. This project is an SSH
 # client that handles passwords and private key material, so credential-shaped

@@ -2,22 +2,30 @@
 
 ## Prerequisites
 
-- Python 3.10 or newer.
+- Python 3.8 or newer, matching `requires-python` in `pyproject.toml`. The suite is verified on 3.8 through 3.12 in CI. Note that Python 3.8 is itself end-of-life as of October 2024; prefer 3.11+ for new setups.
 - Tkinter available in the active Python installation.
-- Paramiko for real SSH/SFTP use.
 - Git for normal contribution workflows.
-- Optional: Pylint for local lint checks.
+
+Paramiko is installed automatically from the manifest — you no longer need to name it by hand. On Python 3.8 pip resolves the Paramiko 3.x line, because 4.x requires Python 3.9 or newer; see `docs/OTS_SOFTWARE.md`.
 
 The unit tests mock Tkinter and Paramiko heavily, so they can run in environments where no SSH target is available.
 
 ## Installation
+
+Dependencies come from `pyproject.toml`, which is the single source of truth.
 
 ```bash
 git clone https://github.com/esanacore/SSH_DeviceManager
 cd SSH_DeviceManager
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install paramiko pylint
+pip install -e .
+```
+
+To also install contributor tooling (Pylint, flake8, pre-commit, build):
+
+```bash
+pip install -e ".[dev]"
 ```
 
 On macOS or Linux, activate the virtual environment with:

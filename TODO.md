@@ -10,7 +10,14 @@ This file is the living roadmap for SSH Device Manager.
 ## Technical Debt
 
 - [ ] Add a coverage tool and record the first measured line/branch coverage baseline in `docs/TEST_PLAN.md`.
-- [ ] Add a dependency manifest for runtime and contributor tooling so Paramiko and Pylint setup is reproducible.
+- [x] Add a dependency manifest for runtime and contributor tooling so Paramiko and Pylint setup is reproducible. Added `pyproject.toml` (PEP 621) with `paramiko>=3.4` as the runtime dependency and a `dev` extra for Pylint, flake8, pre-commit, and build. Version is read dynamically from `VERSION` to avoid a second source of truth.
+- [ ] Consider raising `requires-python` from `>=3.8` to `>=3.9`. Python 3.8 has been end-of-life since October 2024, and the 3.8 floor is the only reason `paramiko` is specified as `>=3.4` rather than `>=4` — a 3.8 install silently receives the older Paramiko 3.x line. Raising the floor would let the project require Paramiko 4.x uniformly and drop 3.8 from the CI matrices. Deferred because commit `e103746` deliberately added 3.8 compatibility.
+- [ ] Add a `pip` ecosystem entry to `.github/dependabot.yml` now that a manifest exists, so Paramiko upgrades are proposed automatically rather than noticed by hand.
+
+## Operations
+
+- [ ] Protect the `main` branch with required status checks and required review. `constitution/INTEGRATION.md`'s "Repository Settings Checklist" expects this, and `gh api .../branches/main/protection` currently returns "Branch not protected", so nothing enforces the constitution gates before a merge.
+- [ ] Enable "Automatically delete head branches" in the repository settings, per the same checklist.
 
 ## Refactoring
 
@@ -22,6 +29,7 @@ This file is the living roadmap for SSH Device Manager.
 - [ ] Cover real Tk event-loop scheduling behavior for connection-state changes instead of relying only on mocks.
 - [ ] Add a live-device smoke-test script or documented manual checklist for release candidates.
 - [ ] Add measured coverage reporting and set an enforceable project floor after the first baseline.
+- [ ] Close GAP-004: Paramiko is mocked everywhere, so neither resolved line is exercised against the real library. Since Python 3.8 resolves Paramiko 3.x and 3.9+ resolves 4.x, two distinct dependency lines ship with no unmocked coverage. A minimal smoke test against a local SSH server would cover both.
 
 ## Documentation
 
@@ -35,6 +43,8 @@ This file is the living roadmap for SSH Device Manager.
 - [ ] Tag Constitution releases `v1.35.0`, `v1.36.0`, and `v1.37.0` in `esanacore/engineering-constitution`. `VERSION` and `CHANGELOG.md` on `main` declare 1.37.0, but the newest Git tag is `v1.34.0`, so every adopting repository pinned to current `main` reports `AHEAD/DIVERGED` against the tag-based version gate instead of a clean `CURRENT`.
 - [ ] Once the OTS inventory is confirmed complete, switch `.github/workflows/constitution-ots.yml` to `--strict` so an undocumented dependency fails the build.
 - [ ] Consider switching `.github/workflows/constitution-tests.yml` and `constitution-doc-freshness.yml` to `--strict` after a period of warn-only observation.
+- [ ] Wire `constitution/scripts/check_version_alignment.sh` into `.github/workflows/constitution-compliance.yml`. That workflow currently runs only `check_compliance.sh` and `check_traceability.sh`, so stale Constitution version references in governance docs are caught only when someone runs the checker by hand.
+- [ ] Switch `.github/workflows/constitution-ots.yml` to `--strict` — the inventory is now complete and the checker passes in strict mode, so this is ready whenever you want it enforcing.
 
 ## Nice-to-Have
 

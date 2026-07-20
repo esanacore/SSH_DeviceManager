@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main, feat/customizer-autoreload ]
-  pull_request:
     branches: [ main ]
+  # No branch filter: this previously ran only on pull requests targeting main,
+  # so a stacked pull request (one whose base is another feature branch) never
+  # ran the test suite at all. Every constitution-* workflow already triggers on
+  # bare `pull_request:` for this reason.
+  pull_request:
 
 jobs:
   build:

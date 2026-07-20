@@ -112,6 +112,7 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - **Release publishing was broken.** `python-publish.yml` runs `python -m build`, but the repository had no `pyproject.toml` or `setup.py` to build from — the workflow failed in 11 seconds the one time it ran, on release `v0.2.0`. The new manifest fixes that path; `python -m build` now produces a valid sdist and wheel.
     - **Python 3.8 support was claimed but never tested.** `ci.yml` ran the suite on 3.11/3.12 only while `pylint.yml` linted 3.8/3.9/3.10. Because both workflows named their job `build`, the check list rendered as `build (3.8)`..`build (3.12)` and looked like full coverage. The test matrix now spans 3.8–3.12, and the lint job is renamed `lint` so the two are distinguishable.
     - Corrected `docs/SETUP.md`, which required "Python 3.10 or newer" — inconsistent with both the lint matrix and the newly declared `>=3.8` floor.
+    - **`ci.yml` never ran on stacked pull requests.** Its trigger was `pull_request: branches: [main]`, so a pull request based on any branch other than `main` skipped the test suite entirely. The branch filter is removed, matching every `constitution-*` workflow.
 - **Constitution 1.37.0 Alignment Fixes**:
     - Corrected stale test counts in `.github/copilot-instructions.md`, which claimed 100 tests against an actual suite of 176.
     - Corrected the stale Constitution version reference in `README.md`, which claimed `1.29.0`.

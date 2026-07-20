@@ -64,6 +64,7 @@ Line coverage is not currently measured in CI. The near-term target is to add a 
 | 2026-07-04 | `Ran 176 tests in 0.518s` / `OK` | Full suite after structured JSON output export and Constitution 1.29.0 alignment updates. |
 | 2026-07-19 | `Ran 176 tests in 0.641s` / `OK` | Full suite after Constitution 1.37.0 alignment. Governance-only change; no runtime code touched. |
 | 2026-07-19 | `Ran 176 tests in 0.6s` / `OK`; pylint `10.00/10` | Full suite after adding `pyproject.toml`. CI test matrix widened from 3.11/3.12 to 3.8–3.12, so the Python 3.8 compatibility restored in commit `e103746` is now test-verified rather than lint-verified only. |
+| 2026-07-19 | `lint (3.8)` failed in CI, then passed after fix | **Local-only verification proved insufficient.** `python -m build` was validated on the dev machine's Python 3.14 / setuptools 82, but `pyproject.toml` required `setuptools>=77`, which does not exist for Python 3.8 (setuptools dropped 3.8 after 75.3.4). The 3.8 matrix entry added in the same change caught it. Lesson recorded: a manifest claiming an old floor must be installed on that floor in CI, not merely built on the newest interpreter. |
 
 ## Coverage Gap Log
 

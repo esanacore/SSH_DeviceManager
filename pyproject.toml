@@ -1,14 +1,24 @@
 [build-system]
-requires = ["setuptools>=77", "wheel"]
+# setuptools>=61 is the floor for PEP 621 metadata and dynamic version-from-file.
+# The ceiling matters more than the floor here: setuptools dropped Python 3.8
+# after 75.3.x, so anything >=76 is uninstallable on the 3.8 interpreter this
+# project supports. Requiring >=77 (as the PEP 639 SPDX `license` field would
+# have needed) breaks `pip install` on 3.8 outright — see the license note below.
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssh-device-manager"
 description = "Tkinter desktop application for managing remote devices over SSH and SFTP."
 readme = "README.md"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
 authors = [{ name = "Eric Sanacore" }]
+
+# The license is declared via the trove classifier below rather than the
+# `license` / `license-files` keys. The PEP 639 SPDX form needs setuptools>=77,
+# which requires Python>=3.9 and so cannot coexist with this project's 3.8
+# floor; the older `license = {file = ...}` table form is deprecated in current
+# setuptools. The classifier is unambiguous and works on every supported
+# version, and setuptools ships the LICENSE file in the distribution regardless.
 keywords = ["ssh", "sftp", "paramiko", "tkinter", "network-automation"]
 
 # Version is read from the repository's VERSION file rather than duplicated here.
@@ -37,6 +47,7 @@ classifiers = [
     "Environment :: X11 Applications",
     "Environment :: Win32 (MS Windows)",
     "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",

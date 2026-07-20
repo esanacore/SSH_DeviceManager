@@ -1,5 +1,4 @@
 # SSH Device Manager - Test Matrix
-# SSH Device Manager - Test Matrix
 
 > **Test File:** `test_SSH_DeviceManager.py`
 > **Total Tests:** 158 (142 unit + 16 integration)

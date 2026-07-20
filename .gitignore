@@ -370,3 +370,36 @@ ssh_device_manager_config.json
 SSH_DeviceManager.py.bak
 SSH_DeviceManager.pyproj
 ssh_device_manager_config.json
+
+# --- Secrets and credentials ---------------------------------------------
+# Recommended by constitution/scripts/check_secrets.sh. This project is an SSH
+# client that handles passwords and private key material, so credential-shaped
+# files must never be committable by accident.
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# SSH private keys
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*_rsa
+*_dsa
+*_ecdsa
+*_ed25519
+known_hosts
+
+# Service account / credential JSON
+credentials.json
+service-account*.json
+
+# netrc
+.netrc
+_netrc
+
+# Terraform state (may embed secrets)
+*.tfstate
+*.tfstate.*

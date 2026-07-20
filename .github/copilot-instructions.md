@@ -1,5 +1,33 @@
 # SSH Device Manager - AI Coding Instructions
-# SSH Device Manager - AI Coding Instructions
+
+This repository follows Eric's Engineering Constitution, pinned as the `constitution/` submodule.
+The architecture guidance below is project-specific and takes precedence over universal defaults;
+everything else comes from the constitution.
+
+## Required Reading
+
+Before making changes, read:
+
+- `constitution/CONSTITUTION.md`
+- `constitution/AI_WORKFLOW.md`
+- `constitution/TESTING.md`
+- `constitution/DOCUMENTATION.md`
+- `constitution/SECURITY.md`
+- `constitution/CODE_STYLE.md`
+- `README.md`
+- `TODO.md`
+- `CHANGELOG.md`
+- `docs/MEMORY.md`
+
+## Workflow Requirements
+
+- Check `docs/SESSION_PLAN.md` for a previous interrupted session; write your own plan there before implementing, and clear or archive it when the session completes.
+- Read `docs/MEMORY.md` to load project context, codebase learnings, and user preferences.
+- Add or update automated tests for behavioral changes; evaluate coverage and record gaps in `docs/TEST_PLAN.md`.
+- Update `docs/OTS_SOFTWARE.md` in the same change that adds, removes, or upgrades a third-party dependency.
+- Update `TODO.md` and `CHANGELOG.md` as part of every change.
+- Review security impact before completing work, and sweep for secrets before pushing.
+- Propose new codebase learnings, user preferences, or major decisions to the user and (upon approval) record them in `docs/MEMORY.md`.
 
 ## Architecture Overview
 
@@ -27,7 +55,7 @@ ssh_device_manager/          # Main package
         sections.py          # Section loading, rendering, file watching
 
 SSH_DeviceManager.py         # Thin launcher / backward-compat shim
-test_SSH_DeviceManager.py    # 100 unit + integration tests
+test_SSH_DeviceManager.py    # 163 unit + integration tests
 customizer.py                # Standalone sections.json editor
 docs/                        # Test matrix, Gherkin specs, reading guide
 ```
@@ -74,7 +102,7 @@ The host field uses `ttk.Combobox` with a special `<Clear History>` option. Hist
 ```powershell
 python -m unittest test_SSH_DeviceManager.py
 ```
-Tests use `unittest.mock` to mock `paramiko`, `tkinter`, and file dialogs. Tkinter is mocked at import time in the test file. All 100 tests (84 unit + 16 integration) run in under 1 second.
+Tests use `unittest.mock` to mock `paramiko`, `tkinter`, and file dialogs. Tkinter is mocked at import time in the test file. The full suite is 176 tests (163 in `test_SSH_DeviceManager.py`, 13 in `test_customizer.py`) and runs in about a second.
 
 ### Adding a New Button
 1. In `_define_sections()` in `app.py`, add an `ActionButton` to the appropriate `ButtonSection`
@@ -127,7 +155,7 @@ Tests mock external dependencies (Paramiko, Tkinter, file dialogs) to avoid side
 - `ssh_device_manager/sections_loader.py`: JSON section loading
 - `ssh_device_manager/output.py`: Output manager
 - `SSH_DeviceManager.py`: Thin launcher / backward-compat shim
-- `test_SSH_DeviceManager.py`: 100 unit + integration tests
+- `test_SSH_DeviceManager.py`: 163 unit + integration tests
 - `docs/TEST_MATRIX.md`: Test IDs, descriptions, requirements traceability
 - `docs/TEST_GHERKIN.md`: Gherkin behavioral specifications
 - `docs/READING_GUIDE.md`: How to navigate the test documentation

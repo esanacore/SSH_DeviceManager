@@ -15,11 +15,13 @@ Use these files as primary context:
 - `README.md`
 - `TODO.md`
 - `CHANGELOG.md`
+- `docs/MEMORY.md`
 
 ## Development Standards
 
 - Prefer existing project conventions.
 - Keep changes focused and maintainable.
+- Check `docs/SESSION_PLAN.md` for a previous interrupted session; write your own plan before implementing.
 - Add tests for new behavior.
 - Add regression tests for bug fixes.
 - Update documentation for changed behavior, setup, architecture, or operations.
@@ -27,3 +29,4 @@ Use these files as primary context:
 - Update CHANGELOG.md for user-facing changes.
 - Avoid adding unnecessary dependencies.
 - Consider security, observability, and release impact.
+- Propose new codebase learnings, user preferences, or major decisions to the user and (upon approval) record them in `docs/MEMORY.md` before completing work.

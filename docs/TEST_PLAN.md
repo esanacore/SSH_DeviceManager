@@ -2,6 +2,14 @@
 
 This document defines how SSH Device Manager is tested, what coverage is expected, and which gaps remain.
 
+## How to Run Tests
+
+This section is machine-readable. `constitution/scripts/run_declared_tests.sh` (invoked by
+`.github/workflows/constitution-tests.yml`) extracts the `Full suite` command below and runs it,
+so the command must stay a real, runnable one-liner.
+
+- Full suite: `python -m unittest test_SSH_DeviceManager test_customizer -v`
+
 ## Test Commands
 
 Primary suite:

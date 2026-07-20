@@ -5,6 +5,8 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Engineering Constitution 1.39.1**: advanced the pinned `constitution/` submodule; `check_constitution_freshness.sh` reports `CURRENT`. Nothing to adopt — the patch release refactors the constitution's own `bootstrap.sh` and fixes a `.gitignore` bug in that repository, changing no templates, checkers, or required files. Verified by diffing every template against its local copy.
+
 - **Operator Guidance (salvaged from unmerged work)**:
     - Recovered documentation from commit `fcfe4ec` on `codex-ops-roadmap-docs`, which was written 2026-06-30 and never merged. Ported as fresh edits rather than a merge, since the branch predates the Constitution 1.37.0–1.39.0 work and conflicts with it.
     - `docs/OPERATIONS.md`: added **Environments** and **Safe Operations** sections, plus configuration-drift diagnostics, a profile-reset restore path, host-key trust rollback, and a link to `docs/release-process.md`.

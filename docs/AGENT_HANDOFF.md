@@ -22,33 +22,38 @@ Use this file to leave concise context for the next human or AI agent working on
    python -m unittest test_SSH_DeviceManager test_customizer -v
    ```
 
-## Last Session — 2026-07-19: Constitution 1.38.0 Update
+## Last Session — 2026-07-19: Constitution 1.39.0 Update
 
-- **Branch**: `chore/constitution-1.38.0`.
-- **Scope**: Governance only. No runtime behavior in `ssh_device_manager/` was touched.
-- **Submodule**: moved forward one release; `check_constitution_freshness.sh` now reports `CURRENT`.
-- **Added**: `docs/ENV_VARS.md` (the new Environment & Configuration Contract) and the matching
-  `.github/workflows/constitution-env.yml` gate. This project reads **no** environment variables —
-  verified by scanning for `os.environ`/`os.getenv`/`environ[...]` across the package and root
-  modules — so the document records that fact explicitly and describes the file-based configuration
-  (`ssh_device_manager_config.json`, `sections.json`) used instead.
-- **Refreshed**: `CONTRIBUTING.md` and `HELP.md` from the new templates. `SECURITY.md` was
-  deliberately **not** refreshed: its section structure matches the template exactly but its content
-  is real project-specific security guidance, where the template ships placeholders.
-- **Verification**: 176 tests pass; pylint 10.00/10; compliance `--strict --product`, secrets
-  `--strict`, OTS `--strict`, env-vars `--strict`, traceability (12/12), and version alignment all pass.
+- **Branch**: `chore/constitution-1.39.0`.
+- **Scope**: Governance only. No runtime behavior changed.
+- **Why so soon after the previous bump**: upstream tagged two releases thirty minutes apart on the same evening (20:16 and 20:46). Because `check_constitution_freshness.sh` reports `BEHIND` as a **hard** version-gate failure — unlike `AHEAD`, which only warns — every open pull request in this repository goes red the moment upstream tags, regardless of what that pull request changes. PR #23 was merged with a known-red `version-gate` for exactly this reason: its other 20 checks passed and its content never touched the submodule. Expect this to recur while upstream is releasing rapidly.
+- **Added**: `.github/workflows/constitution-architecture.yml` and the `Layer Boundaries` section in `docs/ARCHITECTURE.md`, left **undeclared** so enforcement stays opt-in and `SKIP`ped.
+- **Trap hit and reverted, worth knowing**: `check_architecture.sh` parses the `Layer Boundaries` pipe table by text and does **not** respect HTML comment boundaries. A draft table sketched inside an HTML comment was still read as a live declaration; because its paths did not resolve, the checker emitted per-layer `WARN`s but still summarized "all dependencies point inward" — enforcement that appears active while verifying nothing. The candidate layering is therefore recorded as prose, not a table. Do not sketch a draft table in that file.
+- **Second, related trap**: `check_compliance.sh` treats *any* HTML comment marker as placeholder content, so a file carrying one fails the `--strict` placeholder check. The 1.39.0 `docs/ARCHITECTURE.md` template ships eight of them, meaning following the template as written breaks strict compliance. This repository's `docs/ARCHITECTURE.md` therefore uses ordinary Markdown prose where the template used comments. Avoid reintroducing HTML comments into governance documents.
+- **Verification**: 176 tests pass; pylint 10.00/10; compliance `--strict --product`, secrets, OTS, env-vars, architecture (`SKIP`, 0 violations), traceability (12/12), version alignment, and freshness (`CURRENT (v1.39.0)`) all pass.
 
 ### Carried-Forward Context
 
-- The upstream tagging gap that produced `AHEAD/DIVERGED` in the previous session is **resolved** —
-  releases through 1.38.0 are now tagged upstream, and the pin resolves to a real tag.
-- **Optional cleanup not taken.** 1.38.0 relocates constitution-owned docs out of the repository root
-  (`SECURITY.md`/`CONTRIBUTING.md` to `.github/`, `HELP.md`/`SYSTEM_PROMPT.md` to `docs/`) and makes
-  the 13 vendor instruction files opt-in rather than default. Its Compatibility note states existing
-  repositories need not move anything, and `check_compliance.sh` accepts either location. Both are
-  logged in `TODO.md` under Governance as deliberate, separate decisions rather than silent changes.
-- Paramiko constraints from the manifest session still apply: see `docs/OTS_SOFTWARE.md` OTS-001 and
-  OTS-107. In particular, do not raise the setuptools floor above 75.3.x while Python 3.8 is supported.
+Earlier sessions in this sequence are recorded in `CHANGELOG.md` and the commit history; only
+context still worth acting on is repeated here.
+
+- **The `AHEAD/DIVERGED` tagging gap is resolved.** Upstream tags now exist for every release, so
+  the pin always resolves to a real tag. Never "fix" a freshness complaint by pinning backward —
+  older tags predate checkers this repository now depends on.
+- **Optional cleanup not taken.** The current release line relocates constitution-owned documents
+  out of the repository root (`SECURITY.md`/`CONTRIBUTING.md` to `.github/`, `HELP.md`/
+  `SYSTEM_PROMPT.md` to `docs/`) and makes the 13 vendor instruction files opt-in rather than
+  installed by default. `check_compliance.sh` accepts either location, so neither is required.
+  Both are logged in `TODO.md` under Governance as deliberate decisions rather than silent omissions.
+- **`SECURITY.md` must not be refreshed from its template.** Its section structure matches exactly,
+  so a mechanical template sync looks correct — but its content is real project-specific security
+  guidance where the template ships placeholders.
+- **Paramiko and setuptools constraints still apply**: see `docs/OTS_SOFTWARE.md` OTS-001 and
+  OTS-107. In particular, do not raise the setuptools floor above 75.3.x while Python 3.8 is
+  supported — setuptools dropped 3.8 after that release, and a higher floor makes the project
+  uninstallable on the very version `requires-python` claims to support.
+- **Unmerged operator documentation** sits on `codex-ops-roadmap-docs` with no remote branch. See
+  the salvage item in `TODO.md` under Documentation before removing any worktree.
 
 ## Handoff Note Template
 

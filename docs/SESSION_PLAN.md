@@ -4,7 +4,7 @@ This document records the current session's planned work before implementation b
 
 **This file is overwritten at the start of each session.** Before overwriting, ensure the previous session's outcomes are captured in `AGENT_HANDOFF.md` or commit messages.
 
-> **Status: cleared.** The previous session (2026-07-19, Constitution 1.38.0 update) completed;
+> **Status: cleared.** The previous session (2026-07-19, Constitution 1.39.0 update) completed;
 > its outcomes are recorded in `docs/AGENT_HANDOFF.md` and `CHANGELOG.md`. No session is in progress.
 > Overwrite this file with your own plan before beginning implementation.
 

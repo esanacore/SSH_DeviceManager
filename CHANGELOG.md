@@ -5,6 +5,15 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Engineering Constitution 1.37.0 Alignment**:
+    - Advanced the pinned `constitution/` submodule from `v1.30.0` to Constitution `1.37.0` on `main`.
+    - Added `docs/OTS_SOFTWARE.md`, the off-the-shelf software inventory, with real entries for Paramiko (assessed High risk as the credential-handling and host-key trust boundary), CPython, Tk/Tcl, and Pylint.
+    - Added `docs/SESSION_PLAN.md` for crash-recovery session planning and `docs/MEMORY.md` as the durable project-memory scaffold.
+    - Added four CI gates: `constitution-tests.yml` (runs the suite declared in `docs/TEST_PLAN.md`, wired to Python 3.12 + Paramiko), `constitution-doc-freshness.yml`, `constitution-secrets.yml`, and `constitution-ots.yml`.
+    - Added `.claude/settings.json` with the `SessionStart` hook that reports constitution staleness at the start of every Claude Code session.
+    - Added a machine-readable `## How to Run Tests` section to `docs/TEST_PLAN.md` so the declared-test CI gate can find the full-suite command.
+    - Refreshed every agent instruction file against the 1.37.0 templates, picking up `CODE_STYLE.md`, session planning, and project memory. Project-specific architecture guidance in `.github/copilot-instructions.md` was preserved and given an explicit constitution section.
+
 - **Engineering Constitution Completion**:
     - Updated the pinned `constitution/` submodule from `v1.20.0` to Constitution `1.29.0` on `main`.
     - Added Constitution adoption guardrails for version checks, compliance checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
@@ -86,7 +95,15 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 - **Security Default**: Host key policy changed from AutoAddPolicy to WarningPolicy.
 - **Test Count**: 19 → 158 tests (142 unit + 16 integration).
 
+### Security
+- **Secrets Coverage in `.gitignore`**:
+    - Added ignore rules for environment files, SSH private keys (`id_rsa`, `id_ed25519`, `*_rsa`, and friends), service-account JSON, `.netrc`, and Terraform state. This project handles SSH passwords and private key material, and the constitution secrets sweep previously reported six coverage gaps; `check_secrets.sh --strict` now passes.
+
 ### Fixed
+- **Constitution 1.37.0 Alignment Fixes**:
+    - Corrected stale test counts in `.github/copilot-instructions.md`, which claimed 100 tests against an actual suite of 176.
+    - Corrected the stale Constitution version reference in `README.md`, which claimed `1.29.0`.
+    - Removed duplicated top-level headings in `docs/READING_GUIDE.md`, `docs/TEST_GHERKIN.md`, `docs/TEST_MATRIX.md`, and `.github/copilot-instructions.md`.
 - **Host History Accuracy**:
     - Host history now records only successful SSH connections, preventing failed or mistyped hosts from polluting the dropdown.
 - **Pylint CI Stability**:

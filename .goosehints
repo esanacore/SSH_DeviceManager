@@ -2,6 +2,33 @@
 
 This repository follows [Eric's Engineering Constitution](constitution/CONSTITUTION.md). Apply it on every task, including when goose runs under a multi-agent orchestrator such as goosetown.
 
+## Installing goose and goosetown
+
+Neither ships with this repository — both are separate CLI tools you run
+this repo's work through, not something Claude Code (or any single-file
+hint like this one) can install on their own. If `goose --version` fails,
+the one-shot fix is `bash constitution/scripts/setup-machine.sh
+--skip-gstack` (run once per machine, idempotent). Or by hand:
+
+```bash
+# goose CLI (org is aaif-goose, formerly published under block/)
+curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash
+```
+
+For multi-agent orchestration (a flock of goose delegates working in
+parallel — researchers, workers, writers, reviewers):
+
+```bash
+git clone https://github.com/aaif-goose/goosetown.git
+cd goosetown && ./goose
+```
+
+goosetown requires goose v1.25.0+ already installed. See
+[aaif-goose/goose](https://github.com/aaif-goose/goose) and
+[aaif-goose/goosetown](https://github.com/aaif-goose/goosetown) for full
+docs — their own READMEs still say `block/...` in places (pre-rename;
+GitHub redirects it, but clone the `aaif-goose/...` URL directly).
+
 ## Required Reading
 
 Before making changes, read:
@@ -10,14 +37,18 @@ Before making changes, read:
 2. `constitution/AI_WORKFLOW.md` — Required step-by-step workflow.
 3. `AGENTS.md` — Project-specific rules and overrides.
 4. `README.md`, `TODO.md`, `CHANGELOG.md` — Project context.
+5. `docs/MEMORY.md` — Project memory (learnings, preferences, decisions).
 
 ## Standards
 
 - Follow the workflow in `constitution/AI_WORKFLOW.md` for every task.
+- Check `docs/SESSION_PLAN.md` for a previous interrupted session, then write your own plan before implementing.
+- Read `docs/MEMORY.md` to load project context, codebase learnings, and user preferences.
 - Add or update tests for behavioral changes; evaluate coverage and record gaps.
 - Update `TODO.md` and `CHANGELOG.md` as part of every change.
 - Record major design decisions in `docs/adr/`.
 - Review security impact before completing work.
+- Propose new codebase learnings, user preferences, or major decisions to the user and (upon approval) record them in `docs/MEMORY.md` before completing work.
 
 ## Multi-Agent Orchestration (goosetown)
 

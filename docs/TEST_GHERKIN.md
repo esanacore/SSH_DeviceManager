@@ -1,5 +1,4 @@
 # SSH Device Manager - Test Specifications (Gherkin)
-# SSH Device Manager - Test Specifications (Gherkin)
 
 > **Test File:** `test_SSH_DeviceManager.py`
 > **Total Scenarios:** 158

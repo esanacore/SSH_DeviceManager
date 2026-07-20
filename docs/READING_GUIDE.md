@@ -1,5 +1,4 @@
 # How to Read the Test Documentation
-# How to Read the Test Documentation
 
 This guide explains the structure, terminology, and ID systems used in the two
 test documents so that any team member

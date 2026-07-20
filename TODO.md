@@ -28,7 +28,7 @@ This file is the living roadmap for SSH Device Manager.
 - [ ] Add screenshots or a short walkthrough for the main app and `customizer.py`.
 - [ ] Document a recommended trusted-host onboarding workflow for strict host-key mode.
 - [ ] Reconcile `docs/TEST_MATRIX.md` and `docs/READING_GUIDE.md` with the current suite. Both still declare 158 tests (142 unit + 16 integration) and were last updated 2026-06-06; the suite is now 176 (163 in `test_SSH_DeviceManager.py`, 13 in `test_customizer.py`). The counts were deliberately left unchanged rather than edited in isolation, because the matrix enumerates individual cases and needs the ~18 missing rows added, not just a new total.
-- [ ] Populate `docs/MEMORY.md`. It was installed as an empty scaffold; per the constitution its entries are user-discretionary and must be approved before being recorded.
+- [x] Populate `docs/MEMORY.md` with the initial approved entries (Paramiko trust boundary, constitution pin rationale, Tk-mocked-at-import test behavior). Further entries remain user-discretionary and must be approved before being recorded.
 
 ## Governance
 

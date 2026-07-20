@@ -161,7 +161,7 @@ Test documentation:
 
 ## Constitution workflow
 
-This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.38.0` on `main` and includes local guardrails for Constitution version checks, compliance checks, declared-test runs, documentation-freshness checks, secrets sweeps, OTS inventory cross-checks, environment-contract checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
+This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.39.0` on `main` and includes local guardrails for Constitution version checks, compliance checks, declared-test runs, documentation-freshness checks, secrets sweeps, OTS inventory cross-checks, environment-contract checks, architecture checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
 
 Start with:
 

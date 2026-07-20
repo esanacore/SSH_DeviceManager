@@ -47,6 +47,41 @@ The application does not run a backend service, expose an HTTP API, or collect t
 - `unittest` with extensive mocks for Tkinter and Paramiko
 - Pylint for static linting
 
+## Layer Boundaries
+
+**No layer table is declared yet, and that is deliberate.** Dependency Rule enforcement via
+`constitution/scripts/check_architecture.sh` activates only when this section contains a
+`Layer Boundaries` pipe table. Until then the checker reports `SKIP` and emits advisory structural
+signals only. Adopting enforcement is tracked in `TODO.md` under Architecture.
+
+Two traps make this worth reading before anyone edits this section.
+
+**Do not sketch a draft table here, not even inside an HTML comment.**
+`check_architecture.sh` parses the table by text and does not respect comment boundaries, so a
+commented-out example is still read as a live declaration. A draft whose paths do not resolve
+produces per-layer `WARN`s but still summarizes "all dependencies point inward" — enforcement that
+looks active while verifying nothing, which is worse than declaring no layers at all.
+
+**Avoid HTML comments in this file entirely.** `check_compliance.sh` treats any comment marker as
+placeholder content and fails the file under `--strict`. The upstream template for this document
+ships several, so following it verbatim breaks strict compliance; this file uses ordinary prose
+instead.
+
+The candidate layering for this project, written as prose so it cannot be parsed as a declaration:
+
+- **domain** (innermost, depends on nothing) — `models`, `constants`, `themes`
+- **services** (may depend on domain) — `ssh_manager`, `config`, `validation`, `sections_loader`, `output`, `paramiko_compat`
+- **controllers** (may depend on domain, services) — the `controllers` package
+- **ui** (outermost) — `app.py`
+
+Only `controllers` is currently a directory. The checker attributes imports by path component, so
+the other three would each need to become a package before they could be declared as layer paths.
+That restructuring is the substance of the decision, not a detail to settle at enforcement time.
+
+Before declaring anything, confirm every existing import already complies. If any do not, that is a
+real finding to fix or justify, not a reason to loosen the table. Once a real table exists, tighten
+`.github/workflows/constitution-architecture.yml` to `--strict`.
+
 ## Architectural Decisions
 
 Major decisions should be recorded in `docs/adr/`. The current package split favors a thin Tkinter composition root plus focused controllers so SSH behavior, configuration, output, and UI actions can be tested independently.

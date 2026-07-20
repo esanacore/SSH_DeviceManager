@@ -5,6 +5,11 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Engineering Constitution 1.39.0**:
+    - Advanced the pinned `constitution/` submodule to Constitution `1.39.0`; `check_constitution_freshness.sh` reports `CURRENT`.
+    - Added `.github/workflows/constitution-architecture.yml`, which runs the new `check_architecture.sh` — the first constitution checker that inspects code structure rather than file presence.
+    - Added a `Layer Boundaries` section to `docs/ARCHITECTURE.md` recording a candidate layering for this project. Dependency Rule enforcement is opt-in and deliberately left **off**: only `controllers` is currently a directory, and the checker attributes imports by path component, so the other three candidate layers would need to become packages first. The checker reports `SKIP` with 0 violations. Advisory structural signals flag `app.py` (671 lines) and `test_SSH_DeviceManager.py` (2765 lines); these never fail the build by design.
+
 - **Engineering Constitution 1.38.0**:
     - Advanced the pinned `constitution/` submodule to Constitution `1.38.0`; `check_constitution_freshness.sh` reports `CURRENT`.
     - Added `docs/ENV_VARS.md`, the Environment & Configuration Contract, and the `constitution-env.yml` CI gate that cross-checks it. This project reads no environment variables, so the document records that explicitly and describes the file-based configuration (`ssh_device_manager_config.json`, `sections.json`) used instead.

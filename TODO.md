@@ -25,6 +25,16 @@ This file is the living roadmap for SSH Device Manager.
 
   Note the last two are owned by the `KITT/CodexSandboxOffline` account, so a normal session cannot inspect them for uncommitted changes without a `git config --global --add safe.directory` exception.
 
+## Architecture
+
+- [ ] Decide whether to adopt Dependency Rule enforcement via `constitution/scripts/check_architecture.sh` (new in Constitution 1.39.0). Enforcement is opt-in and currently `SKIP`ped: it activates only when `docs/ARCHITECTURE.md` declares a `Layer Boundaries` table. A candidate layering is written there as prose — domain (models, constants, themes) → services (ssh_manager, config, validation, sections_loader, output, paramiko_compat) → controllers → ui (app.py).
+
+  The blocker is structural, not clerical: the checker attributes imports by **path component**, and only `controllers` is currently a directory. The other three layers are individual modules and would need to become packages before they could be declared. That restructuring is the real decision here.
+
+  **Gotcha worth knowing before anyone drafts a table**: `check_architecture.sh` parses the pipe table by text and does **not** respect HTML comment boundaries. A commented-out draft is still read as a live declaration, and one with unresolvable paths yields per-layer `WARN`s while still reporting "all dependencies point inward" — enforcement that appears active but verifies nothing. This was hit and reverted while adopting 1.39.0; the candidate layering is deliberately recorded as prose for that reason.
+
+- [ ] Consider splitting `ssh_device_manager/app.py` (671 lines) and `test_SSH_DeviceManager.py` (2765 lines). Both exceed the architecture checker's advisory 600-line signal. These signals never fail the build by design — `constitution/ARCHITECTURE.md`'s SRP guardrail says not to split a module merely because it is long — so treat this as a prompt to look, not an instruction to split.
+
 ## Refactoring
 
 - [ ] Centralize Tk event-loop dispatch for UI state updates that can be requested from worker threads.
@@ -58,6 +68,10 @@ This file is the living roadmap for SSH Device Manager.
 - [ ] Decide which vendor AI instruction files to keep. As of 1.38.0 they are opt-in (`bootstrap.sh --agents=<list>`) rather than installed by default, on the reasoning that adopting a framework should not double a project's root file listing. This repository still carries all 13 — `.cursorrules`, `.goosehints`, `.openhands_instructions`, `.agent-instructions.md`, `.project-rules.md`, `SYSTEM_PROMPT.md`, `COPILOT_INSTRUCTIONS.md`, `.antigravity/`, `.continue/`, `.aider.conf.yml`, and others — including for tools that may never be used here. Deleting the unused ones is a judgment call about which agents this project actually supports.
 - [ ] Once the OTS inventory is confirmed complete, switch `.github/workflows/constitution-ots.yml` to `--strict` so an undocumented dependency fails the build.
 - [ ] Consider switching `.github/workflows/constitution-tests.yml` and `constitution-doc-freshness.yml` to `--strict` after a period of warn-only observation.
+- [ ] Report two upstream inconsistencies to `esanacore/engineering-constitution`, both found while adopting 1.39.0:
+  - `check_compliance.sh`'s placeholder detector matches any HTML comment marker, but `templates/docs/ARCHITECTURE.md` ships eight of them. An adopter who follows the template verbatim fails the `--strict` placeholder check on that file. Worked around here by writing the section as ordinary prose.
+  - `check_architecture.sh` parses the `Layer Boundaries` pipe table by text without respecting HTML comment boundaries, so a commented-out draft table is read as a live declaration. When its paths do not resolve, the checker emits per-layer `WARN`s yet still summarizes "all dependencies point inward" — a false green. The two behaviors interact badly: the template tells adopters to keep the example table commented, which is exactly the state that produces the misleading result.
+- [ ] Consider whether `BEHIND` should stay a hard version-gate failure. Upstream tagged two releases thirty minutes apart on 2026-07-19, and because `BEHIND` fails the build, every open pull request went red the moment the second landed — regardless of content. PR #23 had to be merged with a known-red `version-gate` whose failure was unrelated to the change. If the upstream release cadence stays this high, this converts routine work into constant submodule chasing.
 - [ ] Wire `constitution/scripts/check_version_alignment.sh` into `.github/workflows/constitution-compliance.yml`. That workflow currently runs only `check_compliance.sh` and `check_traceability.sh`, so stale Constitution version references in governance docs are caught only when someone runs the checker by hand.
 - [ ] Switch `.github/workflows/constitution-ots.yml` to `--strict` — the inventory is now complete and the checker passes in strict mode, so this is ready whenever you want it enforcing.
 

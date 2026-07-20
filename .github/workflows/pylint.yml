@@ -3,21 +3,31 @@ name: Pylint
 on: [push]
 
 jobs:
-  build:
+  # Named "lint", not "build". Both this workflow and ci.yml previously used
+  # "build", so the PR check list rendered as "build (3.8)".."build (3.12)" —
+  # which read as though the test suite ran on all five versions when 3.8/3.9/
+  # 3.10 were lint-only. ci.yml now covers the full matrix; this job is
+  # unambiguously the linter.
+  lint:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
+        # Install contributor tooling from the manifest's dev extra rather than
+        # naming pylint inline, so the lint environment is reproducible from a
+        # single source. This also pulls in paramiko, letting pylint resolve
+        # imports instead of guessing at them.
+        pip install -e ".[dev]"
     - name: Analysing the code with pylint
       run: |
         pylint $(git ls-files '*.py')

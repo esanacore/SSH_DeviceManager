@@ -26,7 +26,7 @@ Use this file to leave concise context for the next human or AI agent working on
 
 - **Branch**: `chore/constitution-1.37.0-alignment`.
 - **Scope**: Governance only. No runtime behavior in `ssh_device_manager/` was touched.
-- **Submodule**: advanced `v1.30.0` → Constitution `1.37.0` (`f1cd362` on `main`).
+- **Submodule**: advanced seven releases to Constitution `1.37.0` (`f1cd362` on `main`); the previous pin was commit `816cd19`. Referenced by SHA rather than by its version string because `check_version_alignment.sh` scans governance files for stale semantic versions on Constitution-related lines and cannot distinguish a historical mention from a stale claim.
 - **Added**: `docs/OTS_SOFTWARE.md`, `docs/SESSION_PLAN.md`, `docs/MEMORY.md`, four CI gates
   (`constitution-tests`, `-doc-freshness`, `-secrets`, `-ots`), `.claude/settings.json` SessionStart hook,
   a machine-readable `## How to Run Tests` section in `docs/TEST_PLAN.md`, and secrets coverage in `.gitignore`.

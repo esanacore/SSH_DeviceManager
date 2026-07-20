@@ -62,6 +62,8 @@ Line coverage is not currently measured in CI. The near-term target is to add a 
 | 2026-06-30 | `Ran 171 tests in 0.515s` / `OK` | Baseline before host-history regression fix in `codex/constitution-hardening`. |
 | 2026-06-30 | `Ran 172 tests in 0.634s` / `OK` | Full suite after host-history regression fix and Constitution documentation updates. |
 | 2026-07-04 | `Ran 176 tests in 0.518s` / `OK` | Full suite after structured JSON output export and Constitution 1.29.0 alignment updates. |
+| 2026-07-19 | `Ran 176 tests in 0.641s` / `OK` | Full suite after Constitution 1.37.0 alignment. Governance-only change; no runtime code touched. |
+| 2026-07-19 | `Ran 176 tests in 0.6s` / `OK`; pylint `10.00/10` | Full suite after adding `pyproject.toml`. CI test matrix widened from 3.11/3.12 to 3.8–3.12, so the Python 3.8 compatibility restored in commit `e103746` is now test-verified rather than lint-verified only. |
 
 ## Coverage Gap Log
 
@@ -70,3 +72,4 @@ Line coverage is not currently measured in CI. The near-term target is to add a 
 | GAP-001 | No measured line/branch coverage command or stored baseline. | Medium | NFR-003 | Open | `TODO.md` Testing |
 | GAP-002 | No live-device smoke checklist for real SSH/SFTP behavior after mocked tests pass. | Medium | FR-001, FR-002, FR-003 | Open | `TODO.md` Testing |
 | GAP-003 | UI thread-affinity behavior is tested through mocks but not exercised with a real Tk event loop. | Medium | NFR-001 | Open | `TODO.md` Testing |
+| GAP-004 | Paramiko is mocked in every test, so neither resolved line is exercised against the real library. Python 3.8 resolves Paramiko 3.x and 3.9+ resolves 4.x, meaning two distinct dependency lines ship with zero unmocked coverage between them. | Medium | FR-001, FR-002 | Open | `TODO.md` Testing |

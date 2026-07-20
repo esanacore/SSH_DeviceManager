@@ -11,9 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        # Include 3.11 and 3.12; keep a narrower set to stabilize while diagnosing
-        python-version: ['3.11', '3.12']
+        # Every version pyproject.toml's requires-python (">=3.8") claims to
+        # support must actually run the suite here. Previously this matrix was
+        # 3.11/3.12 only, while pylint.yml linted 3.8/3.9/3.10 — because both
+        # workflows name their job "build", the PR check list showed
+        # "build (3.8)".."build (3.12)" and looked like full coverage when 3.8
+        # was never test-verified at all.
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v6
@@ -40,7 +46,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install paramiko
+        # Install from the manifest rather than naming packages inline, so CI
+        # exercises the same dependency resolution a user gets. On Python 3.8
+        # this resolves paramiko 3.x (4.x requires >=3.9); on 3.9+ it resolves
+        # 4.x. See docs/OTS_SOFTWARE.md.
+        pip install -e .
+        python -c "import paramiko; print('paramiko', paramiko.__version__)"
 
     - name: Run unit tests (verbose)
       run: |

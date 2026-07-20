@@ -5,6 +5,14 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Dependency Manifest (`pyproject.toml`)**:
+    - Added PEP 621 packaging metadata as the single source of truth for dependencies, closing the long-standing "add a dependency manifest" roadmap item.
+    - Runtime dependency is `paramiko>=3.4`; contributor tooling (Pylint, flake8, pre-commit, build) lives in a `dev` optional extra installed with `pip install -e ".[dev]"`.
+    - Version is read dynamically from the existing `VERSION` file rather than duplicated, so there is no second copy to drift.
+    - Declares `requires-python = ">=3.8"`, honoring the 3.8 typing compatibility deliberately restored in commit `e103746`.
+    - Installing now provides an `ssh-device-manager` GUI entry point.
+- **Reproducible CI dependency setup**: `ci.yml` and `pylint.yml` now install from the manifest (`pip install -e .` / `.[dev]`) instead of naming packages inline, so CI exercises the same resolution a user gets.
+
 - **Engineering Constitution 1.37.0 Alignment**:
     - Advanced the pinned `constitution/` submodule from `v1.30.0` to Constitution `1.37.0` on `main`.
     - Added `docs/OTS_SOFTWARE.md`, the off-the-shelf software inventory, with real entries for Paramiko (assessed High risk as the credential-handling and host-key trust boundary), CPython, Tk/Tcl, and Pylint.
@@ -100,6 +108,10 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
     - Added ignore rules for environment files, SSH private keys (`id_rsa`, `id_ed25519`, `*_rsa`, and friends), service-account JSON, `.netrc`, and Terraform state. This project handles SSH passwords and private key material, and the constitution secrets sweep previously reported six coverage gaps; `check_secrets.sh --strict` now passes.
 
 ### Fixed
+- **Dependency Manifest Fixes**:
+    - **Release publishing was broken.** `python-publish.yml` runs `python -m build`, but the repository had no `pyproject.toml` or `setup.py` to build from — the workflow failed in 11 seconds the one time it ran, on release `v0.2.0`. The new manifest fixes that path; `python -m build` now produces a valid sdist and wheel.
+    - **Python 3.8 support was claimed but never tested.** `ci.yml` ran the suite on 3.11/3.12 only while `pylint.yml` linted 3.8/3.9/3.10. Because both workflows named their job `build`, the check list rendered as `build (3.8)`..`build (3.12)` and looked like full coverage. The test matrix now spans 3.8–3.12, and the lint job is renamed `lint` so the two are distinguishable.
+    - Corrected `docs/SETUP.md`, which required "Python 3.10 or newer" — inconsistent with both the lint matrix and the newly declared `>=3.8` floor.
 - **Constitution 1.37.0 Alignment Fixes**:
     - Corrected stale test counts in `.github/copilot-instructions.md`, which claimed 100 tests against an actual suite of 176.
     - Corrected the stale Constitution version reference in `README.md`, which claimed `1.29.0`.

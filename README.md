@@ -61,17 +61,21 @@ docs/                        # Test matrix, Gherkin specs, reading guide
 
 2. Create and activate a virtual environment (recommended).
 
-3. Install dependencies:
+3. Install dependencies from the manifest:
 
    ```bash
-   pip install paramiko
+   pip install -e .
    ```
+
+   Add contributor tooling (Pylint, flake8, pre-commit, build) with `pip install -e ".[dev]"`.
 
 4. Launch the main app:
 
    ```bash
    python SSH_DeviceManager.py
    ```
+
+   Installing also provides an `ssh-device-manager` command that launches the same GUI.
 
 5. (Optional) Launch the customizer to edit the UI config visually:
 

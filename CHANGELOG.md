@@ -5,6 +5,10 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Engineering Constitution 1.38.0**:
+    - Advanced the pinned `constitution/` submodule to Constitution `1.38.0`; `check_constitution_freshness.sh` reports `CURRENT`.
+    - Added `docs/ENV_VARS.md`, the Environment & Configuration Contract, and the `constitution-env.yml` CI gate that cross-checks it. This project reads no environment variables, so the document records that explicitly and describes the file-based configuration (`ssh_device_manager_config.json`, `sections.json`) used instead.
+    - Refreshed `CONTRIBUTING.md` and `HELP.md` from the 1.38.0 templates. `SECURITY.md` was intentionally left in place — its structure matches the template but its content is real project-specific security guidance where the template ships placeholders.
 - **Dependency Manifest (`pyproject.toml`)**:
     - Added PEP 621 packaging metadata as the single source of truth for dependencies, closing the long-standing "add a dependency manifest" roadmap item.
     - Runtime dependency is `paramiko>=3.4`; contributor tooling (Pylint, flake8, pre-commit, build) lives in a `dev` optional extra installed with `pip install -e ".[dev]"`.

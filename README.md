@@ -161,7 +161,7 @@ Test documentation:
 
 ## Constitution workflow
 
-This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.37.0` on `main` and includes local guardrails for Constitution version checks, compliance checks, declared-test runs, documentation-freshness checks, secrets sweeps, OTS inventory cross-checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
+This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.38.0` on `main` and includes local guardrails for Constitution version checks, compliance checks, declared-test runs, documentation-freshness checks, secrets sweeps, OTS inventory cross-checks, environment-contract checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
 
 Start with:
 
@@ -173,6 +173,7 @@ Start with:
 - `docs/SESSION_PLAN.md` for the current session's planned work (crash recovery)
 - `docs/MEMORY.md` for durable project memory, learnings, and user preferences
 - `docs/OTS_SOFTWARE.md` for the third-party dependency register
+- `docs/ENV_VARS.md` for the environment and configuration contract
 - `TODO.md` for the living roadmap
 
 ## Contributing & Workflow

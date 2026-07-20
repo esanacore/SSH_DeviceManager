@@ -5,6 +5,14 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
+- **Operator Guidance (salvaged from unmerged work)**:
+    - Recovered documentation from commit `fcfe4ec` on `codex-ops-roadmap-docs`, which was written 2026-06-30 and never merged. Ported as fresh edits rather than a merge, since the branch predates the Constitution 1.37.0–1.39.0 work and conflicts with it.
+    - `docs/OPERATIONS.md`: added **Environments** and **Safe Operations** sections, plus configuration-drift diagnostics, a profile-reset restore path, host-key trust rollback, and a link to `docs/release-process.md`.
+    - `SECURITY.md`: documented host-key mode guidance (`auto` reserved for trusted labs), warned that `sections.json` defines **executable** SSH actions rather than just labels, and reworked the checklist to distinguish properties the code already holds from open work.
+    - `docs/TROUBLESHOOTING.md`: added recovery for corrupted saved profiles and for `sections.json` edits that make buttons disappear.
+    - `docs/ARCHITECTURE.md`: added **Key Design Constraints**.
+    - `docs/SETUP.md`: added the writable-working-directory prerequisite and a post-setup validation section.
+
 - **Engineering Constitution 1.39.0**:
     - Advanced the pinned `constitution/` submodule to Constitution `1.39.0`; `check_constitution_freshness.sh` reports `CURRENT`.
     - Added `.github/workflows/constitution-architecture.yml`, which runs the new `check_architecture.sh` — the first constitution checker that inspects code structure rather than file presence.

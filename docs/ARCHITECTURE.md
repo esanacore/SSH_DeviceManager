@@ -47,6 +47,13 @@ The application does not run a backend service, expose an HTTP API, or collect t
 - `unittest` with extensive mocks for Tkinter and Paramiko
 - Pylint for static linting
 
+## Key Design Constraints
+
+- The application must remain usable without a network connection to any hosted backend. Everything is local except the SSH/SFTP sessions it initiates.
+- `sections.json` is operator-editable metadata, so malformed input must fail safely and predictably rather than crashing the UI.
+- Tests mock `tkinter` and `paramiko` heavily so the suite runs headlessly on developer machines and in CI, with no display server and no reachable SSH host.
+- Host-key verification must stay explicit and configurable rather than silently bypassed.
+
 ## Layer Boundaries
 
 **No layer table is declared yet, and that is deliberate.** Dependency Rule enforcement via

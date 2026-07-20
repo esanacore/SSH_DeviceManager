@@ -45,3 +45,21 @@ The tests use a compatibility shim, but real SSH/SFTP use requires the package.
 ```powershell
 & 'C:\Program Files\Git\bin\bash.exe' constitution/scripts/check_compliance.sh --strict --product .
 ```
+
+## Saved Profiles Are Missing Or Corrupted
+
+- **Symptoms**: Expected connection profiles are absent, or the app loads an empty profile list.
+- **Cause**: `ssh_device_manager_config.json` was overwritten, malformed, moved, or hand-edited incorrectly.
+- **Fix**:
+  1. Inspect `ssh_device_manager_config.json` for malformed JSON.
+  2. Restore it from a local backup if you keep snapshots — the file is gitignored, so Git cannot recover it.
+  3. If recovery is impossible, delete or rename the file and let the app recreate a clean default profile store.
+
+## Buttons Or Sections Disappear After Editing `sections.json`
+
+- **Symptoms**: Expected actions do not render, or the app logs section-loading warnings after a config edit.
+- **Cause**: Invalid JSON syntax, an unsupported command token, or `max_buttons` truncating more actions than expected.
+- **Fix**:
+  1. Open `sections.json` in `customizer.py`, which produces schema-conforming output, or validate the JSON manually.
+  2. Run the suite — the contract tests cover `sections.json` shape and command tokens.
+  3. Restore the last known-good backup of `sections.json` if needed.

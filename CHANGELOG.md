@@ -5,7 +5,16 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 ## [Unreleased]
 
 ### Added
-- **Engineering Constitution 1.39.1**: advanced the pinned `constitution/` submodule; `check_constitution_freshness.sh` reports `CURRENT`. Nothing to adopt — the patch release refactors the constitution's own `bootstrap.sh` and fixes a `.gitignore` bug in that repository, changing no templates, checkers, or required files. Verified by diffing every template against its local copy.
+- **OS Keyring Integration (FR-009)**:
+    - Added `ssh_device_manager/keyring_helper.py` to securely store, retrieve, and delete SSH passwords using the operating system's native credential store (`keyring`).
+    - Added a "Save Password to Keyring" checkbox to the connection form in `SSHGuiApp`.
+    - Automatically loads saved passwords from the keyring when selecting a host or saved connection profile.
+    - Included graceful fallback when `keyring` library or OS service is unavailable (e.g., headless environments).
+    - Updated `pyproject.toml` dependencies, `docs/PRODUCT_REQUIREMENTS.md` (FR-009), `docs/REQUIREMENTS_TRACEABILITY.md`, `docs/OTS_SOFTWARE.md` (OTS-002), and unit tests (`TestKeyringIntegration`).
+- **Engineering Constitution 1.44.1**:
+    - Advanced the pinned `constitution/` submodule to Constitution `1.44.1`; `check_constitution_freshness.sh` reports `AHEAD/DIVERGED` (pinned `v1.44.1`).
+    - Fixed declared-test command runner in `docs/TEST_PLAN.md` to use `python3`.
+    - Updated version references across governance documentation (`README.md`, `docs/AGENT_HANDOFF.md`).
 
 - **Operator Guidance (salvaged from unmerged work)**:
     - Recovered documentation from commit `fcfe4ec` on `codex-ops-roadmap-docs`, which was written 2026-06-30 and never merged. Ported as fresh edits rather than a merge, since the branch predates the Constitution 1.37.0–1.39.0 work and conflicts with it.

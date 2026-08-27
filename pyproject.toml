@@ -32,15 +32,16 @@ dynamic = ["version"]
 # See docs/OTS_SOFTWARE.md for the caveats that come with it.
 requires-python = ">=3.8"
 
-# Paramiko is the only third-party runtime dependency; everything else this
-# project uses is standard library (tkinter, json, queue, threading, ...).
+# Runtime dependencies: Paramiko for SSH/SFTP transport and Keyring for secure OS credential storage.
 #
-# The floor is >=3.4 rather than >=4 on purpose. Paramiko 4.x declares
+# The Paramiko floor is >=3.4 rather than >=4 on purpose. Paramiko 4.x declares
 # requires-python >=3.9, so it cannot be installed on the 3.8 floor above.
 # Leaving the ceiling open lets pip resolve the newest compatible release per
-# interpreter: paramiko 3.5.x on Python 3.8, and 4.x on 3.9+. No environment
-# markers are needed to get that behavior.
-dependencies = ["paramiko>=3.4"]
+# interpreter: paramiko 3.5.x on Python 3.8, and 4.x on 3.9+.
+dependencies = [
+    "paramiko>=3.4",
+    "keyring>=23.0.0",
+]
 
 classifiers = [
     "Development Status :: 4 - Beta",

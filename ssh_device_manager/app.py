@@ -127,6 +127,8 @@ class SSHGuiApp(tk.Tk):  # pylint: disable=too-many-public-methods
         self.pass_var = MagicMock()
         self.timeout_var = MagicMock()
         self.clear_creds_var = MagicMock()
+        self.save_keyring_var = MagicMock()
+        self.save_keyring_var.get.return_value = False
         self.host_key_mode_var = MagicMock()
         self.host_key_mode_var.get.return_value = "warning"
         self.profile_name_var = MagicMock()
@@ -274,7 +276,10 @@ class SSHGuiApp(tk.Tk):  # pylint: disable=too-many-public-methods
         self.clear_creds_var = tk.BooleanVar(value=False)
         tk.Checkbutton(self.settings_frame, text="Clear credentials on disconnect", variable=self.clear_creds_var).grid(row=0, column=4, padx=6, pady=6, sticky="w")
 
-        tk.Button(self.settings_frame, text="Test Connection", command=self.test_connection).grid(row=0, column=5, padx=6, pady=6, sticky="w")
+        self.save_keyring_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(self.settings_frame, text="Save password to Keyring", variable=self.save_keyring_var).grid(row=0, column=5, padx=6, pady=6, sticky="w")
+
+        tk.Button(self.settings_frame, text="Test Connection", command=self.test_connection).grid(row=0, column=6, padx=6, pady=6, sticky="w")
 
         # ----- Output pane -----
         self.output_text = tk.Text(self.output_frame, wrap="word", height=12, font=("Courier New", 9))

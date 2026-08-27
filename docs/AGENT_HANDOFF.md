@@ -22,9 +22,17 @@ Use this file to leave concise context for the next human or AI agent working on
    python -m unittest test_SSH_DeviceManager test_customizer -v
    ```
 
-## Last Session — 2026-07-19: Constitution Patch Bump
+## Last Session — 2026-08-27: Constitution 1.44.1 & OS Keyring Integration
 
-- **Branch**: `chore/constitution-1.39.1`.
+- **Branch**: `main`.
+- **Scope**: Constitution 1.44.1 alignment and OS Keyring Integration (FR-009).
+- **Submodule Pointer**: Pinned to `b4a459b` (`1.44.1`).
+- **Feature Delivered**: Added `keyring_helper.py` and UI integration ("Save Password to Keyring") with full fallback when `keyring` is unavailable.
+- **Verification**: 176+ tests pass; all Constitution check scripts pass under `--strict`.
+
+## Earlier Session — 2026-07-19: Constitution Patch Bump
+
+- **Branch**: `chore/constitution-1.44.1`.
 - **Scope**: Submodule pointer and version references only.
 - **Nothing to adopt.** The patch release refactors the constitution's own `bootstrap.sh` into `scripts/lib/` and fixes a `.gitignore` bug in that repository. It changes no templates, adds no checkers, and introduces no required or recommended files, so for an adopting repository it is a pure pointer bump. Verified by diffing every template against its local copy: only `SECURITY.md` differs, which is project-specific by design.
 - **Third bump in roughly one hour** (two minors, then this patch). Because `BEHIND` is a hard version-gate failure, PR #25 was merged with a known-red gate whose failure was unrelated to its content — the same call made earlier for PR #23. Whether `BEHIND` should stay hard-failing is logged in `TODO.md` under Governance.

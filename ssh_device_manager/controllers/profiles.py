@@ -40,7 +40,8 @@ class ProfileController:
     def save_profile(self):
         """Persist reusable connection settings to the application config.
 
-        Note: Passwords are intentionally omitted from saved profiles.
+        Note: Passwords are intentionally omitted from JSON profile files;
+        credentials live in the OS keyring when opted in.
         """
         profile_name = (
             self.app.profile_name_var.get().strip()
@@ -56,16 +57,27 @@ class ProfileController:
         inputs = self.app._get_connection_inputs()
         if inputs is None:
             return
-        host, port, user, _pw, timeout = inputs
+        host, port, user, pw, timeout = inputs
 
-        # Passwords are intentionally omitted; profiles store connection metadata only.
+        save_keyring = bool(self.app.save_keyring_var.get())
+
+        # Passwords are intentionally omitted from profile files; credentials live in OS keyring when opted in.
         self.app.app_config.setdefault("profiles", {})[profile_name] = {
             "host": host,
             "port": port,
             "username": user,
             "timeout": timeout,
             "host_key_mode": self.app._get_host_key_mode(),
+            "save_keyring": save_keyring,
         }
+
+        if save_keyring and pw:
+            from ..keyring_helper import set_keyring_password  # pylint: disable=import-outside-toplevel
+            if set_keyring_password(profile_name, pw):
+                self.app.log(f"[OK] Saved password to OS keyring for '{profile_name}'.")
+            else:
+                self.app.log(f"[WARN] OS keyring unavailable; password not stored in keyring.")
+
         self.app._save_app_config()
         self.refresh_profile_list()
         self.app.profile_select_var.set(profile_name)
@@ -98,6 +110,16 @@ class ProfileController:
         self.app.user_var.set(str(profile.get("username", "")))
         self.app.timeout_var.set(int(profile.get("timeout", 10)))
         self.app.host_key_mode_var.set(str(profile.get("host_key_mode", "warning")))
+
+        save_keyring = bool(profile.get("save_keyring", False))
+        self.app.save_keyring_var.set(save_keyring)
+        if save_keyring:
+            from ..keyring_helper import get_keyring_password  # pylint: disable=import-outside-toplevel
+            stored_pw = get_keyring_password(profile_name)
+            if stored_pw is not None:
+                self.app.pass_var.set(stored_pw)
+                self.app.log(f"[OK] Loaded password from OS keyring for '{profile_name}'.")
+
         if host and host not in self.app.host_history:
             self.app.host_history.insert(0, host)
             self.app.host_combo["values"] = self.app.host_history + ["<Clear History>"]
@@ -120,6 +142,8 @@ class ProfileController:
             return
         profiles = self.app.app_config.get("profiles", {})
         if profile_name in profiles:
+            from ..keyring_helper import delete_keyring_password  # pylint: disable=import-outside-toplevel
+            delete_keyring_password(profile_name)
             del profiles[profile_name]
             self.app._save_app_config()
             self.app._refresh_profile_list()

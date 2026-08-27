@@ -2763,3 +2763,85 @@ class TestParseIntInputNoMaxBelowMin(unittest.TestCase):
         # value 0 is below minimum 1; no maximum supplied → line 23 branch
         result = app._parse_int_input("0", "Count", minimum=1)
         self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# OS Keyring Integration Tests (FR-009)
+# ---------------------------------------------------------------------------
+
+class TestKeyringIntegration(unittest.TestCase):
+    """Unit tests for FR-009 OS Keyring helper and profile integration."""
+
+    def setUp(self):
+        self.storage = {}
+
+    def test_keyring_helper_crud(self):
+        from ssh_device_manager import keyring_helper
+        mock_kr = MagicMock()
+        mock_kr.set_password.side_effect = lambda svc, acc, pw: self.storage.update({f"{svc}:{acc}": pw})
+        mock_kr.get_password.side_effect = lambda svc, acc: self.storage.get(f"{svc}:{acc}")
+        mock_kr.delete_password.side_effect = lambda svc, acc: self.storage.pop(f"{svc}:{acc}", None)
+
+        with patch("ssh_device_manager.keyring_helper._get_keyring", return_value=mock_kr):
+            self.assertTrue(keyring_helper.is_keyring_available())
+            self.assertTrue(keyring_helper.set_keyring_password("test_prof", "secret123"))
+            self.assertEqual(keyring_helper.get_keyring_password("test_prof"), "secret123")
+            self.assertTrue(keyring_helper.delete_keyring_password("test_prof"))
+            self.assertIsNone(keyring_helper.get_keyring_password("test_prof"))
+
+    def test_keyring_helper_fallback_when_missing(self):
+        from ssh_device_manager import keyring_helper
+        with patch("ssh_device_manager.keyring_helper._get_keyring", return_value=None):
+            self.assertFalse(keyring_helper.is_keyring_available())
+            self.assertFalse(keyring_helper.set_keyring_password("test_prof", "secret"))
+            self.assertIsNone(keyring_helper.get_keyring_password("test_prof"))
+            self.assertFalse(keyring_helper.delete_keyring_password("test_prof"))
+
+    def test_profile_save_and_load_with_keyring(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app._save_app_config = MagicMock()
+        app._refresh_profile_list = MagicMock()
+
+        app.profile_name_var.get.return_value = "KeyringProfile"
+        app.profile_select_var.get.return_value = "KeyringProfile"
+        app.host_var.get.return_value = "192.168.1.100"
+        app.port_var.get.return_value = 22
+        app.user_var.get.return_value = "admin"
+        app.pass_var.get.return_value = "securepass"
+        app.timeout_var.get.return_value = 10
+        app.save_keyring_var.get.return_value = True
+
+        mock_set = MagicMock(return_value=True)
+        mock_get = MagicMock(return_value="securepass")
+
+        with patch("ssh_device_manager.keyring_helper.set_keyring_password", mock_set), \
+             patch("ssh_device_manager.keyring_helper.get_keyring_password", mock_get):
+            app.save_profile()
+
+            # Password is not in the json app_config
+            prof = app.app_config["profiles"]["KeyringProfile"]
+            self.assertEqual(prof["host"], "192.168.1.100")
+            self.assertTrue(prof["save_keyring"])
+            self.assertNotIn("password", prof)
+            mock_set.assert_called_once_with("KeyringProfile", "securepass")
+
+            # Load profile
+            app.load_selected_profile()
+            app.pass_var.set.assert_called_with("securepass")
+            mock_get.assert_called_once_with("KeyringProfile")
+
+    def test_profile_delete_clears_keyring(self):
+        app = SSH_DeviceManager.SSHGuiApp(init_ui=False)
+        app.app_config = {"profiles": {"DelProf": {"host": "1.1.1.1", "username": "user", "save_keyring": True}}}
+        app.profile_select_var.get.return_value = "DelProf"
+        app.profile_name_var.get.return_value = "DelProf"
+        app._save_app_config = MagicMock()
+        app._refresh_profile_list = MagicMock()
+
+        mock_del = MagicMock(return_value=True)
+        with patch("ssh_device_manager.keyring_helper.delete_keyring_password", mock_del), \
+             patch("ssh_device_manager.controllers.profiles.messagebox.askyesno", return_value=True):
+            app.delete_selected_profile()
+            self.assertNotIn("DelProf", app.app_config.get("profiles", {}))
+            mock_del.assert_called_once_with("DelProf")
+

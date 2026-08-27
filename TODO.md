@@ -4,7 +4,7 @@ This file is the living roadmap for SSH Device Manager.
 
 ## Features
 
-- [ ] Add OS keyring integration so users can opt into secure credential storage without writing passwords to repository or profile files.
+- [x] Add OS keyring integration so users can opt into secure credential storage without writing passwords to repository or profile files. Added `ssh_device_manager/keyring_helper.py` and UI checkbutton ("Save Password to Keyring"). Implemented FR-009.
 - [ ] Add a real-device smoke-test checklist for SSH command execution and SFTP uploads against a disposable test host.
 
 ## Technical Debt

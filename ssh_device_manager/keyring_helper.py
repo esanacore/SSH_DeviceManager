@@ -6,29 +6,27 @@ Degrades gracefully when the `keyring` package is missing or when the
 underlying OS keyring service is unavailable (e.g., headless environments).
 """
 
+from functools import lru_cache
 from typing import Optional
 
 SERVICE_NAME = "SSH_DeviceManager"
 
-_KEYRING_MODULE = None
-_KEYRING_CHECKED = False
 
-
+@lru_cache(maxsize=None)
 def _get_keyring():
     """Dynamically attempt to import the keyring module.
+
+    The import is attempted once and its outcome cached, so a missing or
+    broken keyring package costs one failed import rather than one per call.
 
     Returns:
         The keyring module if available and functional, otherwise None.
     """
-    global _KEYRING_MODULE, _KEYRING_CHECKED
-    if not _KEYRING_CHECKED:
-        _KEYRING_CHECKED = True
-        try:
-            import keyring  # pylint: disable=import-outside-toplevel
-            _KEYRING_MODULE = keyring
-        except ImportError:
-            _KEYRING_MODULE = None
-    return _KEYRING_MODULE
+    try:
+        import keyring  # pylint: disable=import-outside-toplevel
+        return keyring
+    except ImportError:
+        return None
 
 
 def is_keyring_available() -> bool:

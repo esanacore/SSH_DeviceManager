@@ -76,7 +76,7 @@ class ProfileController:
             if set_keyring_password(profile_name, pw):
                 self.app.log(f"[OK] Saved password to OS keyring for '{profile_name}'.")
             else:
-                self.app.log(f"[WARN] OS keyring unavailable; password not stored in keyring.")
+                self.app.log("[WARN] OS keyring unavailable; password not stored in keyring.")
 
         self.app._save_app_config()
         self.refresh_profile_list()

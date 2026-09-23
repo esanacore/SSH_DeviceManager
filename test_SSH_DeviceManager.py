@@ -2844,4 +2844,3 @@ class TestKeyringIntegration(unittest.TestCase):
             app.delete_selected_profile()
             self.assertNotIn("DelProf", app.app_config.get("profiles", {}))
             mock_del.assert_called_once_with("DelProf")
-

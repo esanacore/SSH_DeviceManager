@@ -30,3 +30,12 @@ disable=
 
 [TYPECHECK]
 ignored-modules=tkinter
+
+[SIMILARITIES]
+# The validate-and-unpack idiom at the _get_connection_inputs() call boundary
+# is 5 similar lines shared by the connection and profile controllers. Its
+# early return exits the *caller*, so it cannot be hoisted into a helper
+# without raising an exception through GUI event handlers -- worse than the
+# duplication it would remove. Keep duplicate-code on for genuine duplication;
+# raise the threshold just past this idiom.
+min-similarity-lines=6

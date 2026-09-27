@@ -7,6 +7,8 @@
 
 A Python Tkinter GUI application for managing SSH connections and executing commands on remote devices. Uses `paramiko` for SSH/SFTP. This project provides a configurable, themeable SSH command console with a separate GUI customizer and automatic configuration reload.
 
+**[Open the interactive demo](demo.html)** — a single-file simulation of the interface: the connection panel, the `sections.json`-driven action buttons, the terminal output pane, and all 18 themes. It opens straight from a clone; no Python, no device, no network. Nothing on the page contacts a host, and it says so in the interface.
+
 ## Project Structure
 
 ```
@@ -161,7 +163,7 @@ Test documentation:
 
 ## Constitution workflow
 
-This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.46.0` on `main` and includes local guardrails for Constitution version checks, compliance checks, declared-test runs, documentation-freshness checks, secrets sweeps, OTS inventory cross-checks, environment-contract checks, architecture checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
+This repository adopts Eric's Engineering Constitution through the pinned `constitution/` submodule. The current branch pins the submodule to Constitution `1.48.1` on `main` and includes local guardrails for Constitution version checks, compliance checks, declared-test runs, documentation-freshness checks, secrets sweeps, OTS inventory cross-checks, environment-contract checks, architecture checks, Dependabot submodule updates, pre-commit, Aider, Continue, Goose, Solon, and devcontainers.
 
 Start with:
 

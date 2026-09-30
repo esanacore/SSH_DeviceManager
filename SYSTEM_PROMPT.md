@@ -13,3 +13,4 @@ Deliver high-quality, documented, and tested software by following the project's
 5. **Verify Everything**: Run tests using the commands in `docs/COMMAND_REFERENCE.md`.
 6. **State Management**: Update `TODO.md` and `CHANGELOG.md` as you work.
 7. **Security First**: Review all changes for potential security implications as defined in `constitution/SECURITY.md`.
+8. **Demo Page**: Keep the demo page current — when a change alters user-facing behavior and the repository has a `demo.html`, update it in the same change; a demo still showing the old behavior is an incomplete change (`constitution/DOCUMENTATION.md`, "Demo Page").

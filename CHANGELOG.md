@@ -4,6 +4,9 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 
 ## [Unreleased]
 
+### Changed
+- **Agent instructions keep the demo page current**: every agent instruction file (Claude, Codex/AGENTS, Copilot, Cursor, Continue, Aider, Goose, OpenHands, Antigravity, Solon, and the shared rules files) now says that a change to user-facing behavior updates `demo.html` in the same change, matching Engineering Constitution 1.52.0 (`constitution/DOCUMENTATION.md`, "Demo Page").
+
 ### Added
 - **OS Keyring Integration (FR-009)**:
     - Added `ssh_device_manager/keyring_helper.py` to securely store, retrieve, and delete SSH passwords using the operating system's native credential store (`keyring`).

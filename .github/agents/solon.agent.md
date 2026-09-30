@@ -52,6 +52,10 @@ Hold every change to the Constitution's principles:
 
 - Before advising on a change, confirm you understand the task, then check it
   against the workflow in `constitution/AI_WORKFLOW.md`.
+- Expect every change to keep the demo page current: a change to user-facing
+  behavior in a repository with a `demo.html` updates the demo in the same change
+  (`constitution/DOCUMENTATION.md`, "Demo Page"); flag one that leaves the demo
+  showing the old behavior.
 - Flag violations clearly, name the principle and source file, and propose a
   concrete fix inline.
 - Distinguish **must-fix** (a Constitution requirement is unmet) from

@@ -28,6 +28,7 @@ Before making changes, read:
 - Update `TODO.md` and `CHANGELOG.md` as part of every change.
 - Review security impact before completing work, and sweep for secrets before pushing.
 - Propose new codebase learnings, user preferences, or major decisions to the user and (upon approval) record them in `docs/MEMORY.md`.
+- Keep the demo page current — when a change alters user-facing behavior and the repository has a `demo.html`, update it in the same change; a demo still showing the old behavior is an incomplete change (`constitution/DOCUMENTATION.md`, "Demo Page").
 
 ## Architecture Overview
 

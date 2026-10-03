@@ -7,7 +7,7 @@
 
 A Python Tkinter GUI application for managing SSH connections and executing commands on remote devices. Uses `paramiko` for SSH/SFTP. This project provides a configurable, themeable SSH command console with a separate GUI customizer and automatic configuration reload.
 
-**[Open the interactive demo](demo.html)** — a single-file simulation of the interface: the connection panel, the `sections.json`-driven action buttons, the terminal output pane, and all 18 themes. It opens straight from a clone; no Python, no device, no network. Nothing on the page contacts a host, and it says so in the interface.
+**[Open the interactive demo](demo.html)** ([live](https://esanacore.github.io/SSH_DeviceManager/)) — a single-file simulation of the interface: the connection panel, the `sections.json`-driven action buttons, the terminal output pane, and all 18 themes. It opens straight from a clone; no Python, no device, no network. Nothing on the page contacts a host, and it says so in the interface.
 
 ## Project Structure
 

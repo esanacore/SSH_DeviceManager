@@ -4,6 +4,9 @@ All notable changes to the SSH_DeviceManager project will be documented in this 
 
 ## [Unreleased]
 
+### Added
+- **Demo page published**: `.github/workflows/demo-pages.yml` publishes `demo.html` (and nothing else from the repository) to GitHub Pages at https://esanacore.github.io/SSH_DeviceManager/ whenever the page changes; the README links the live copy.
+
 ### Changed
 - **Agent instructions keep the demo page current**: every agent instruction file (Claude, Codex/AGENTS, Copilot, Cursor, Continue, Aider, Goose, OpenHands, Antigravity, Solon, and the shared rules files) now says that a change to user-facing behavior updates `demo.html` in the same change, matching Engineering Constitution 1.52.0 (`constitution/DOCUMENTATION.md`, "Demo Page").
 

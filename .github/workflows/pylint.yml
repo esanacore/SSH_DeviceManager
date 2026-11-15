@@ -9,7 +9,10 @@ jobs:
   # 3.10 were lint-only. ci.yml now covers the full matrix; this job is
   # unambiguously the linter.
   lint:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: the Ubuntu 26.04 image has no Python 3.8 or
+    # 3.9 build for actions/setup-python, and pyproject.toml declares 3.8 as
+    # the floor. Move this forward only together with requires-python.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

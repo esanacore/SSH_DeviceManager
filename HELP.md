@@ -15,6 +15,7 @@ This file provides help for humans and AI agents working on this project.
 - **Session Planning**: Check `docs/SESSION_PLAN.md` for a previous interrupted session; write your own plan there before implementing.
 - **Project Memory**: Read `docs/MEMORY.md` to load project context, codebase learnings, and user preferences. Propose new codebase learnings, user preferences, or major decisions to the user and (upon approval) record them in `docs/MEMORY.md` before completing work.
 - **Demo Page**: Keep the demo page current — when a change alters user-facing behavior and the repository has a `demo.html`, update it in the same change; a demo still showing the old behavior is an incomplete change (`constitution/DOCUMENTATION.md`, "Demo Page").
+- **Session Log**: Consult and extend the session log — before planning, read the newest rows of `docs/sessions/README.md` and search `docs/sessions/` for earlier sessions on the same topic (`bash constitution/scripts/find_sessions.sh <keyword>`), reading the ones that match; before completing non-trivial work, add this session's summary there (request, context, decisions, discoveries, outcome — a summary, never a transcript, and never a secret) and list it in the index (`constitution/AI_WORKFLOW.md`, "Session Summaries").
 - **Command Help**: See `docs/COMMAND_REFERENCE.md`.
 - **Troubleshooting**: See `docs/TROUBLESHOOTING.md`.
 - **Handoffs**: If you are finishing a session, see `docs/AGENT_HANDOFF.md` and clear or archive `docs/SESSION_PLAN.md`.

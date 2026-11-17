@@ -25,6 +25,7 @@ Before starting, you MUST read:
 - **Session Planning**: Check `docs/SESSION_PLAN.md` for a previous interrupted session, then write your own plan there before implementing.
 - **Project Memory**: Read `docs/MEMORY.md` to load project context and preferences. Propose new codebase learnings, user preferences, or major decisions to the user and (upon approval) record them in `docs/MEMORY.md` before completing work.
 - **Demo Page**: Keep the demo page current — when a change alters user-facing behavior and the repository has a `demo.html`, update it in the same change; a demo still showing the old behavior is an incomplete change (`constitution/DOCUMENTATION.md`, "Demo Page").
+- **Session Log**: Consult and extend the session log — before planning, read the newest rows of `docs/sessions/README.md` and search `docs/sessions/` for earlier sessions on the same topic (`bash constitution/scripts/find_sessions.sh <keyword>`), reading the ones that match; before completing non-trivial work, add this session's summary there (request, context, decisions, discoveries, outcome — a summary, never a transcript, and never a secret) and list it in the index (`constitution/AI_WORKFLOW.md`, "Session Summaries").
 - **Testing**: Every change requires updated or new automated tests.
 - **Documentation**: Update `README.md`, `CHANGELOG.md`, and `TODO.md` for every task.
 - **Security**: Perform a security review of your changes.
